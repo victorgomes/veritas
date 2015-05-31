@@ -31,26 +31,24 @@ definition while :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
 definition dyn :: "('s \<Rightarrow> 's rel) \<Rightarrow> 's rel" ("\<lceil>_\<rceil>" 100) where
   "\<lceil>g\<rceil> \<equiv> {(s, s'). (s, s') \<in> g s}"
   
+definition loc :: "'s rel \<Rightarrow> ('s \<Rightarrow> 's rel) \<Rightarrow> 's rel" where
+  "loc x upd \<equiv> \<lceil>\<lambda>s. x; upd s \<rceil>"
+
 definition block :: "('s \<Rightarrow> 's) \<Rightarrow> 's rel \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> 's) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> 's rel) \<Rightarrow> 's rel" where
   "block init x ret c \<equiv> \<lceil>\<lambda>s. \<langle>init\<rangle>; x; \<lceil>\<lambda>t. \<langle>ret s\<rangle>; c s t\<rceil> \<rceil>"
   
 text {* Annotated programs for automatic verification *}
 
-definition awhile :: "('v \<Rightarrow> 's set) \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition awhile :: "'s set\<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
   "awhile i b x \<equiv> while b x"
 
-definition apre :: "('v \<Rightarrow> 's set) \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition apre :: "'s set\<Rightarrow> 's rel \<Rightarrow> 's rel" where
   "apre p x \<equiv> x"
 
-definition apost :: "'s rel \<Rightarrow> ('v \<Rightarrow> 's set) \<Rightarrow> 's rel" where
+definition apost :: "'s rel \<Rightarrow> 's set\<Rightarrow> 's rel" where
   "apost x q \<equiv> x; apre q skip"
 
-definition aprog :: "('v \<Rightarrow> 's set) \<Rightarrow> 's rel \<Rightarrow> ('v \<Rightarrow> 's set) \<Rightarrow> 's rel" where
+definition aprog :: "'s set\<Rightarrow> 's rel \<Rightarrow> 's set\<Rightarrow> 's rel" where
   "aprog p x q \<equiv> x"
-
-text {* Lift tests to assertions *}
-
-definition assert :: "'a set \<Rightarrow> 'v \<Rightarrow> 'a set" ("<_>") where
-  "<b> \<equiv> \<lambda>_. b"
 
 end
