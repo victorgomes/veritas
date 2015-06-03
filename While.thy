@@ -2,19 +2,20 @@ theory While
   imports Main
 begin
 
-text {* We define a simple while programming language based on relations *}
+text {* Simple while programming language based on relations *}
 
-text {* 
-  Programs are modelled as relations using a standard while programming language:
-  S ::= abort | skip | \<langle>f\<rangle> | \<lceil>g\<rceil> | S; S' | if b then S else S' fi | while b do S od,
-  where f is a state transformer
-*}
+text {* Relations below the identity form tests *}
 
-notation Id_on ("\<lfloor>_\<rfloor>" 100) (* relations below the identity form tests *)  
+notation Id_on ("\<lfloor>_\<rfloor>" 100) 
+
+text {* Variables *}
 
 type_synonym ('v, 's) lval = "('v \<Rightarrow> 'v) \<Rightarrow> 's \<Rightarrow> 's"
 type_synonym ('v, 's) rval = "'s \<Rightarrow> 'v"
 type_synonym ('v, 's) var = "('v, 's) lval \<times> ('v, 's) rval"
+
+abbreviation upd_var :: "('v, 's) var \<Rightarrow> ('v, 's) lval" ("upd _" 100) where "upd_var \<equiv> fst"
+abbreviation val_var :: "('v, 's) var \<Rightarrow> ('v, 's) rval" ("val _" 100) where "val_var \<equiv> snd"
 
 definition abort :: "'s rel" ("abort") where "abort \<equiv> {}"
 
@@ -44,19 +45,20 @@ definition dyn :: "('s \<Rightarrow> 's rel) \<Rightarrow> 's rel" ("\<lceil>_\<
 definition block :: "'s rel \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> 's) \<Rightarrow> 's rel" where
   "block x ret \<equiv> \<lceil>\<lambda>s. x; \<langle>ret s\<rangle>\<rceil>"
 
-definition loc_block :: "('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> 's rel" where
-  "loc_block z_upd z t x \<equiv> (block (\<langle>\<lambda>s. z_upd (\<lambda>_. t s) s\<rangle>; x) (\<lambda>s. z_upd (\<lambda>_. z s)))"
+definition loc_block :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+  "loc_block z t x \<equiv> (block (\<langle>\<lambda>s. (upd z) (\<lambda>_. t s) s\<rangle>; x) (\<lambda>s. (upd z) (\<lambda>_. (val z) s)))"
 
-type_synonym ('v, 's) func = "('s rel \<times> ('v, 's) rval)"
+type_synonym ('v, 's) func = "('s rel \<times> ('v, 's) var)"
 
-abbreviation fun_block :: "'s rel \<Rightarrow> ('v, 's) rval \<Rightarrow> ('v, 's) func" where
+abbreviation fun_block :: "'s rel \<Rightarrow> ('v, 's) var \<Rightarrow> ('v, 's) func" where
   "fun_block R y \<equiv> (R, y)"
 
-abbreviation proc_block :: "('v, 's) func \<Rightarrow> 's rel" ("proc _") where
-  "proc_block \<equiv> fst"
+abbreviation proc_block :: "('v, 's) func \<Rightarrow> 's rel" ("proc _" 100) where "proc_block \<equiv> fst"
+abbreviation ret_var :: "('v, 's) func \<Rightarrow> ('v, 's) var" ("ret _" 100) where "ret_var \<equiv> snd"
 
 definition fun_call :: "('v, 's) lval \<Rightarrow> ('v, 's) func \<Rightarrow> 's rel" where
-  "fun_call u_upd F \<equiv> block (fst F) (\<lambda>s t. u_upd (\<lambda>_. snd F t) t)"
+  "fun_call u_upd F \<equiv> let y = ret F in 
+      block (proc F) (\<lambda>s t. (upd y) (\<lambda>_. snd y s) (u_upd (\<lambda>_. snd y t) t))"
   
 text {* Annotated programs for automatic verification *}
 

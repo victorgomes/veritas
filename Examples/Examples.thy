@@ -21,26 +21,33 @@ lemma "\<turnstile> \<lbrace> `x = n \<rbrace>
     `y := `x + 1
   end 
   \<lbrace> `x = n \<and> `y = 3 \<rbrace>"
-  apply (rule hl_split)
-  by (hoare, auto)+
+  by (hoare first: hl_split) auto
 
 lemma "\<turnstile> \<lbrace> `x = u \<rbrace> local `x := t in R end \<lbrace> `x = u \<rbrace>"
   by hoare auto
 
 definition "MAX xo yo \<equiv> begin 
-    `x := `xo;
-    `y := `yo;
-    if `x \<ge> `y then
-      `y := `x
-    fi
+    local `x := `xo in
+      `y := `yo;
+      if `x \<ge> `y then
+        `y := `x
+      fi
+    end
     return `y
   end"
 
 lemma "\<turnstile> \<lbrace> True \<rbrace> proc (MAX \<guillemotleft>xo\<guillemotright> \<guillemotleft>yo\<guillemotright>) \<lbrace> `y \<ge> xo \<and> `y \<ge> yo \<rbrace>"
   by (hoare simp: MAX_def) auto
 
-lemma "\<turnstile> \<lbrace> True \<rbrace> `z := call (MAX \<guillemotleft>xo\<guillemotright> \<guillemotleft>yo\<guillemotright>) \<lbrace> `z \<ge> xo \<and> `z \<ge> yo \<rbrace>"
+lemma "\<turnstile> \<lbrace> `x = xo \<rbrace> `z := call (MAX \<guillemotleft>xo\<guillemotright> \<guillemotleft>yo\<guillemotright>) \<lbrace> `x = xo \<rbrace>"
+  apply (hoare_step simp: MAX_def, simp)
+  by hoare auto
+
+lemma "\<turnstile> \<lbrace> `y = yo \<rbrace> `z := call (MAX \<guillemotleft>xo\<guillemotright> \<guillemotleft>yo\<guillemotright>) \<lbrace> `y = yo \<rbrace>"
   by (hoare simp: MAX_def) auto
+
+lemma "\<turnstile> \<lbrace> `y = yo \<rbrace> `z := call (MAX \<guillemotleft>xo\<guillemotright> \<guillemotleft>yo\<guillemotright>) \<lbrace> `y = yo \<and> `z \<ge> xo \<and> `z \<ge> yo \<rbrace>"
+  by (hoare simp: MAX_def first: hl_split) auto
 
 lemma swap_annotated:
   "\<turnstile> \<lbrace>`x = xo \<and> `y = yo \<rbrace>
@@ -50,7 +57,7 @@ lemma swap_annotated:
       \<lbrace> `x = yo \<and> `y = yo \<and> `z = xo \<rbrace>
       `y := `z
    \<lbrace>`x = yo \<and> `y = xo\<rbrace>"
-  by (hoare hl_rules: hl_apre_classic) auto
+  by (hoare hl: hl_apre_classic) auto
 
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"

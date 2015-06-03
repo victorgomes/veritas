@@ -16,16 +16,17 @@ text {* Verification condition generator *}
 
 named_theorems hl_rules
 
-method hoare_step uses simp declares hl_rules = (
-  ((rule allI | rule ballI | subst simp | subst fst_conv)+)?;
-  (assumption | rule subset_refl | rule hl_rules)
-)
+method hoare_init uses simp = 
+  ((rule allI | rule ballI | subst simp | subst fst_conv)+)?
 
-method hoare uses simp declares hl_rules = 
-  (hoare_step simp: simp hl_rules: hl_rules; hoare?)+
+method hoare_step uses simp hl = 
+  (hoare_init simp: simp, (assumption | rule subset_refl | rule hl hl_rules))
 
-method hoarerule uses first simp declares hl_rules = 
-  (((rule allI | rule ballI | subst simp)+)?, rule first; hoare?)
+method hoare_ind uses simp hl = 
+  (hoare_step simp: simp hl: hl; (hoare_ind simp: simp hl: hl)?)+
+
+method hoare uses simp first hl = 
+  (hoare_init; (rule first)?; (hoare_ind simp: simp hl: hl)?)
 
 (***********************************************************************************************)
 
@@ -99,17 +100,20 @@ text {* Blocks / Procedures / Recursive Calls *}
 lemma hl_dyn [hl_rules]: "\<forall>s \<in> P. ht P (g s) Q \<Longrightarrow> ht P (\<lceil>g\<rceil>) Q"
   by (fastforce simp: ht_def seq_def dyn_def)
 
-lemma hl_local_inv: "\<forall>s s'. z (z_upd (\<lambda>_. z s) s') = z s \<Longrightarrow> P \<le> {s. z s = u} \<Longrightarrow> ht P (loc_block z_upd z t x) {s. z s = u }"
+lemma hl_local_inv: "\<forall>s s'. z (z_upd (\<lambda>_. z s) s') = z s \<Longrightarrow> P \<le> {s. z s = u} \<Longrightarrow> ht P (loc_block (z_upd, z) t x) {s. z s = u }"
   by (auto simp: block_def loc_block_def graph_def dyn_def seq_def ht_def)
 
-lemma hl_block: "\<forall>s. ht P x {t. ret s t \<in> Q} \<Longrightarrow> ht P (block x ret) Q"
+lemma hl_block: "\<forall>s. ht P x {t. f s t \<in> Q} \<Longrightarrow> ht P (block x f) Q"
   by (hoare simp: block_def) force
 
-lemma hl_loc_block: "\<forall>s. ht P (\<langle>\<lambda>s. z_upd (\<lambda>_. t s) s\<rangle>; x) {t. z_upd s t \<in> Q} \<Longrightarrow> ht P (loc_block z_upd z t x) Q"
+lemma hl_loc_block: "\<forall>s. ht P (\<langle>\<lambda>s. z_upd (\<lambda>_. t s) s\<rangle>; x) {t. z_upd s t \<in> Q} \<Longrightarrow> ht P (loc_block (z_upd, z) t x) Q"
   by (auto simp: loc_block_def intro: hl_block)
 
-lemma hl_fun_block [hl_rules]: "ht P R (subst Q z_upd y) \<Longrightarrow> ht P (fun_call z_upd (R, y)) Q"
-  by (auto simp: fun_call_def subst_def intro: hl_block)
+lemma hl_fun_block_inv: "\<forall>s s'. y (y_upd (\<lambda>_. y s) s') = y s \<Longrightarrow> P \<le> {s. y s = u} \<Longrightarrow> ht P (fun_call z_upd (R, (y_upd, y))) {s. y s = u }"
+  by (auto simp: block_def loc_block_def graph_def dyn_def seq_def ht_def fun_call_def)
+
+lemma hl_fun_block: "\<forall>s. ht P R {t. y_upd (\<lambda>_. y s) (z_upd (\<lambda>_. y t) t) \<in> Q} \<Longrightarrow> ht P (fun_call z_upd (R, (y_upd, y))) Q"
+  by (auto simp: fun_call_def intro: hl_block)
 
 lemma hl_Sup: "\<forall>x \<in> X. \<forall>z. ht (P z) (x z) (Q z) \<Longrightarrow> \<forall>z. ht (P z) (Sup X z) (Q z)"
   by (fastforce simp: ht_def seq_def)
@@ -123,10 +127,10 @@ lemma hl_rec [hl_rules]: "mono f \<Longrightarrow> (\<And>x. \<forall>z. ht (P z
 text {* Annotated programs *}
 
 lemma hl_awhile [hl_rules]: "P \<subseteq> i \<Longrightarrow> -b \<inter> i \<subseteq> Q \<Longrightarrow> ht (b \<sqinter> i) x i \<Longrightarrow> ht P (awhile i b x) Q"
-  by (hoarerule simp: awhile_def first: hl_conseq hl_rules: hl_while) force
+  by (hoare simp: awhile_def first: hl_conseq hl: hl_while) force
   
 lemma hl_apre_classic: "P \<le> P' \<Longrightarrow> ht P' x Q \<Longrightarrow> ht P (apre P' x) Q"
-  by (hoarerule simp: apre_def first: hl_pre)
+  by (hoare simp: apre_def first: hl_pre)
 
 lemma hl_apre_kleymann_aux: "\<forall>z. ht (P' z) x (Q z) \<Longrightarrow> \<forall>s t. (\<forall>z. s \<in> P' z \<longrightarrow> t \<in> Q z) \<longrightarrow> (\<forall>z. s \<in> P z \<longrightarrow> t \<in> Q z) \<Longrightarrow> \<forall>z. ht (P z) (apre (P' z) x) (Q z)"
   by (force simp add: apre_def seq_def ht_def)
@@ -135,18 +139,19 @@ lemma hl_apre_kleymann: "ht P' x Q \<Longrightarrow> \<forall>s t. (s \<in> P' \
   by (force simp add: apre_def seq_def ht_def)
                                                                                
 lemma hl_apost_classic [hl_rules]: "Q' \<le> Q \<Longrightarrow> ht P x Q' \<Longrightarrow> ht P (apost x Q') Q"
-  by (hoare simp: apost_def hl_rules: hl_apre_kleymann) force
+  by (hoare simp: apost_def hl: hl_apre_kleymann) force
   
 lemma hl_aprog_classic : "P \<le> P' \<Longrightarrow> Q' \<le> Q \<Longrightarrow> ht P' x Q' \<Longrightarrow> ht P (aprog P' x Q') Q"
-  by (hoarerule simp: aprog_def first: hl_classic)
+  by (hoare simp: aprog_def first: hl_classic)
 
 (***********************************************************************************************)
 
 text {* When using hoare, rules should be applied in the following order *}
 
-declare hl_split
+declare 
   hl_local_inv [hl_rules]
   hl_loc_block [hl_rules]
+  hl_fun_block_inv [hl_rules]
   hl_fun_block [hl_rules]
   hl_block [hl_rules]
 

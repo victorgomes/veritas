@@ -2,7 +2,26 @@ theory Syntax
   imports Hoare
 begin
 
-(* Syntax of the While language *)
+text {* 
+  Programs are modelled as relations using a while programming language:
+  S ::= abort 
+      | skip 
+      | \<langle>f\<rangle>                       (f is a state transformer)
+      | \<lceil>g\<rceil>                       (g is function from state to relation)
+
+      | x := t                    (assignment)
+      | S; S' 
+      | if b then S else S' fi 
+      | while b do S od 
+
+      | local x := t in S end   (local variable)
+      | rec F in S end          (recursive procedures)
+      | begin S end             (procedures)
+
+      | x := call R             (assignment with a call to a function)
+
+  R ::= begin S return y end    (functions)
+*}
 
 syntax
   "_quote"      :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
@@ -24,7 +43,7 @@ syntax
   "_proc"       :: "'s rel \<Rightarrow> 's rel"                        ("begin// _//end")
   "_fun"        :: "'s rel \<Rightarrow> 'a \<Rightarrow> ('s rel \<times> 'a)"           ("begin// _// return `_//end")
   "_local"      :: "idt \<Rightarrow> 'b \<Rightarrow> 'a rel \<Rightarrow> 'a rel"           ("(0local `_ := _ in// _//end)" [0, 65, 55] 62)
-  "_call"       :: "idt \<Rightarrow> ('s rel \<times> ('s \<Rightarrow> 'v)) \<Rightarrow> 's rel"  ("`_ := call (0_) " [0, 65] 62)
+  "_call"       :: "idt \<Rightarrow> ('s rel \<times> 'a) \<Rightarrow> 's rel"          ("`_ := call (0_) " [0, 65] 62)
 
   "_rec"        :: "'s rel \<Rightarrow> 's rel \<Rightarrow> 's rel"               ("(0rec _ in// _//end)" [0, 55] 62)
 
@@ -36,13 +55,10 @@ syntax
 ML {*
   fun quote_tr [t] = Syntax_Trans.quote_tr @{syntax_const "_antiquote"} t
       | quote_tr ts = raise TERM ("quote_tr", ts)
-  fun quote2_tr [t] = Syntax_Trans.quote_tr @{syntax_const "_antiquote2"} t
-      | quote2_tr ts = raise TERM ("quote2_tr", ts)
 *}
 
 parse_translation {*
-  [(@{syntax_const "_quote"}, K quote_tr), 
-  (@{syntax_const "_quote2"}, K quote2_tr)]
+  [(@{syntax_const "_quote"}, K quote_tr)]
 *}
 
 translations
@@ -58,8 +74,8 @@ translations
   "\<lbrace> u . p \<rbrace> x"             => "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
 
   "begin x end"             => "x"
-  "begin x return `z end"   == "CONST fun_block x z"
-  "local `u := t in x end"  => "CONST loc_block (_update_name u) \<guillemotleft>`u\<guillemotright> \<guillemotleft>t\<guillemotright> x"
+  "begin x return `z end"   => "CONST fun_block x (CONST Pair (_update_name z) z)"
+  "local `u := t in x end"  => "CONST loc_block (CONST Pair (_update_name u) u) \<guillemotleft>t\<guillemotright> x"
   "`z := call R"            => "CONST fun_call (_update_name z) R"
 
   "(rec f in x end) z"          => "CONST lfp (%f z. x z)"
@@ -88,11 +104,14 @@ ML {*
   fun assign_tr' (x :: ts) =  quote_tr' (Syntax.const @{syntax_const "_assign"} $ Syntax_Trans.update_name_tr' x) ts
     | assign_tr' _ = raise Match;
 
-  fun local_tr' [x, _,  t, y] = (quote_tr' (Syntax.const @{syntax_const "_local"} $ Syntax_Trans.update_name_tr' x) [t]) $ y
+  fun local_tr' [(Const _ $ _ $ x), t, y] = (quote_tr' (Syntax.const @{syntax_const "_local"} $ x) [t]) $ y
     | local_tr' _ = raise Match;
 
   fun call_tr' [z, f] = Syntax.const @{syntax_const "_call"} $ Syntax_Trans.update_name_tr' z $ f
     | call_tr' _ = raise Match;
+
+  fun fun_tr' [x, (Const _ $ _ $ z)] = Syntax.const @{syntax_const "_fun"} $ x $ z
+    | fun_tr' _ = raise Match;
 
   fun print_tr' name [x, y, z] = Syntax.const name $ x $ y $ z
     | print_tr' name [x, y] = Syntax.const name $ x $ y
@@ -115,6 +134,7 @@ print_translation {*
 
   (@{const_syntax loc_block}, K local_tr'),
   (@{const_syntax fun_call}, K call_tr'),
+  (@{const_syntax fun_block}, K fun_tr'),
 
   (@{const_syntax ht}, K (print_tr' @{syntax_const "_ht"}))
   ]
