@@ -117,6 +117,32 @@ lemma linear_search:
 
 hide_const i j
 
+fun array_sorted :: "'a array \<Rightarrow> bool" where
+  "array_sorted (a, 0) \<longleftrightarrow> True"
+| "array_sorted (a, Suc 0) \<longleftrightarrow> 
+| "array_sorted (a, Suc n) \<longleftrightarrow> a at n \<le> a at Suc n 
+
+fun array_sorted :: "nat \<Rightarrow> 'a array \<Rightarrow> bool" where
+  "array_sorted (Suc k) (a, Suc n) \<longleftrightarrow> if k = n then array_sorted k n "
+
+record bubble =
+  i :: nat
+  j :: nat
+
+lemma bubble: 
+  "\<turnstile> \<lbrace> True \<rbrace>
+    while `i > 1
+    inv array_sorted (`i + 1) a
+    do
+      while `j < `i
+      inv \<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> a at k \<le> a at `j
+      do
+        `j := `k + 1
+      od
+    od
+  \<lbrace> array_sorted 1 a \<rbrace>"
+  apply hoare
+
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"
 | "fact (Suc n) = (Suc n) * fact n"
