@@ -66,14 +66,15 @@ record sum_state =
 lemma array_sum: "\<turnstile> \<lbrace> True \<rbrace>
         `i := 0;
         `s := 0;
-        while `i < len a
-        inv `s = sum_from_to 1 `i a \<and> `i \<le> len a
+        while `i < N
+        inv `s = array_sum 1 `i a \<and> `i \<le> N
         do
           `i := `i + 1;
-          `s := `s + a at `i
+          `s := `s + a `i
         od
-      \<lbrace> `s = sum a \<rbrace>"
-    by hoare (auto simp: sum_def)
+      \<lbrace> `s = array_sum 1 N a \<rbrace>"
+    by hoare auto
+    
 
 hide_const s i
 
@@ -103,7 +104,7 @@ record ls_state =
 lemma linear_search: 
   "\<turnstile> \<lbrace> True \<rbrace>
     `i := 1;
-    while `i \<le> len a
+    while `i \<le> N
     inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n)
     do
       if a at `i = n then
@@ -111,20 +112,13 @@ lemma linear_search:
       fi;
       `i := `i + 1
     od
-  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> len a \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n) \<rbrace>" 
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n) \<rbrace>" 
   apply (hoare, auto)
   using less_SucE by blast
 
 hide_const i j
 
-fun array_sorted :: "'a array \<Rightarrow> bool" where
-  "array_sorted (a, 0) \<longleftrightarrow> True"
-| "array_sorted (a, Suc 0) \<longleftrightarrow> 
-| "array_sorted (a, Suc n) \<longleftrightarrow> a at n \<le> a at Suc n 
-
-fun array_sorted :: "nat \<Rightarrow> 'a array \<Rightarrow> bool" where
-  "array_sorted (Suc k) (a, Suc n) \<longleftrightarrow> if k = n then array_sorted k n "
-
+(*
 record bubble =
   i :: nat
   j :: nat
@@ -142,7 +136,7 @@ lemma bubble:
     od
   \<lbrace> array_sorted 1 a \<rbrace>"
   apply hoare
-
+*)
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"
 | "fact (Suc n) = (Suc n) * fact n"
