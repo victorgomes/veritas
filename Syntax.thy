@@ -37,6 +37,9 @@ syntax
   "_while"      :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel"             ("(0while  _//do  _//od)" [0, 0] 62)
   "_awhile"     :: "'s set \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel"   ("(0while _//inv _//do// _//od)" [0, 0, 0] 62)
 
+  "_for"        :: "idt \<Rightarrow> 'v \<Rightarrow> 'v \<Rightarrow> 's rel \<Rightarrow> 's rel"    ("(0for `_ := _ to _//do  _//od)" [0, 0] 62)
+  "_afor"        :: "idt \<Rightarrow> 'v \<Rightarrow> 'v \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel" ("(0for `_ := _ to _//inv _ //do  _//od)" [0, 0] 62)
+
   "_apre"       :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel"               ("\<lbrace> _ \<rbrace>// _" [0, 62] 62)
   "_apre_aux"   :: "'v \<Rightarrow> ('v \<Rightarrow> 's set) \<Rightarrow> 's rel \<Rightarrow> 's rel" ("\<lbrace> _ . _ \<rbrace> _" [0, 0, 62] 62)
 
@@ -70,6 +73,9 @@ translations
   "while b do x od"         == "CONST cwhile (CONST Collect \<guillemotleft>b\<guillemotright>) x"
   "while b inv i do x od"   == "CONST awhile (CONST Collect \<guillemotleft>i\<guillemotright>) (CONST Collect \<guillemotleft>b\<guillemotright>) x"
 
+  "for `i := n to m do x od"=> "CONST cfor (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> \<guillemotleft>m\<guillemotright> x"
+  "for `i := n to m inv I do x od"=> "CONST afor (CONST Collect \<guillemotleft>I\<guillemotright>) (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> \<guillemotleft>m\<guillemotright> x"
+
   "\<lbrace> p \<rbrace> x"                 == "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
   "\<lbrace> u . p \<rbrace> x"             => "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
 
@@ -78,7 +84,7 @@ translations
   "local `u := t in x end"  => "CONST loc_block (CONST Pair (_update_name u) u) \<guillemotleft>t\<guillemotright> x"
   "`z := call R"            => "CONST fun_call (_update_name z) R"
 
-  "(rec f in x end) z"          => "CONST lfp (%f z. x z)"
+  "(rec f in x end) z"      => "CONST lfp (%f z. x z)"
 
   "\<turnstile> \<lbrace> p \<rbrace> x \<lbrace> q \<rbrace>"         => "CONST ht (CONST Collect \<guillemotleft>p\<guillemotright>) x (CONST Collect \<guillemotleft>q\<guillemotright>)"
   "\<turnstile> \<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"     => "\<forall>u. CONST ht (CONST Collect \<guillemotleft>p\<guillemotright>) x (CONST Collect \<guillemotleft>q\<guillemotright>)"

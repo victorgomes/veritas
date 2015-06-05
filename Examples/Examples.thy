@@ -124,19 +124,8 @@ hide_const x y z q r
 lemma extend_euclid_invariant:
   assumes "(a' :: int)\<cdot>m + b'\<cdot>n = c" "a\<cdot>m + b\<cdot>n = d" "c = q\<cdot>d + r"
   shows "(a' - q\<cdot>a)\<cdot>m + (b'- q\<cdot>b)\<cdot>n = r"
-proof -
-  have "(a' - q\<cdot>a)\<cdot>m + (b'- q\<cdot>b)\<cdot>n = a'\<cdot>m - q\<cdot>a\<cdot>m + b'\<cdot>n - q\<cdot>b\<cdot>n"
-    by (metis add.left_commute int_distrib(3) uminus_add_conv_diff)
-  also have "... = a'\<cdot>m + b'\<cdot>n - q\<cdot>(a\<cdot>m + b\<cdot>n)"
-    proof -
-      have "\<And>u. u = d \<longrightarrow> u - b \<cdot> n = a \<cdot> m" by (simp add: assms(2) diff_eq_eq)
-      hence "c - d \<cdot> q + b \<cdot> (n \<cdot> q) = c - a \<cdot> (m \<cdot> q)" by (metis diff_add_eq diff_diff_eq2 int_distrib(3) mult.assoc mult.commute)
-      thus "a' \<cdot> m - q \<cdot> a \<cdot> m + b' \<cdot> n - q \<cdot> b \<cdot> n = a' \<cdot> m + b' \<cdot> n - q \<cdot> (a \<cdot> m + b \<cdot> n)" by (metis (no_types) assms(1) assms(2) diff_add_eq diff_eq_eq mult.commute mult.left_commute)
-    qed
-  finally show ?thesis
-    by (simp add: assms(1) assms(2) assms(3))
-qed
-
+  using assms int_distrib(2) 
+  by (auto simp: int_distrib(3))
 
 record extended_euclid_state = 
   a :: int
@@ -176,8 +165,83 @@ lemma extended_euclid: "\<turnstile> \<lbrace> True \<rbrace>
       `r := `c mod `d
     od
   \<lbrace> `a\<cdot>m + `b\<cdot>n = `d  \<rbrace>"
-  by (hoare, auto) (metis extend_euclid_invariant)
+  by hoare (auto simp: extend_euclid_invariant)
 
 hide_const a b a' b' c d r q t
+
+type_synonym 'a array = "(nat \<Rightarrow> 'a) \<times> nat"
+
+abbreviation array :: "'a array \<Rightarrow> nat \<Rightarrow> 'a" where "array \<equiv> fst"
+abbreviation len :: "'a array \<Rightarrow> nat" where "len \<equiv> snd"
+
+fun sum_to :: "nat array \<Rightarrow> nat \<Rightarrow> nat" where
+  "sum_to (f, _) 0 = undefined"
+| "sum_to (f, n) (Suc 0) = (if n > 0 then f 0 else undefined)"
+| "sum_to (f, n) (Suc m) = (if n > m then f m + sum_to (f, n) m else undefined)"
+
+record state_sum =
+  s :: nat
+  i :: nat
+
+lemma "\<turnstile> \<lbrace> len a > 0 \<rbrace> 
+    `s := array a 0;
+    for `i := 0 to len a
+    inv `s = sum_to a `i \<and> `i \<le> len a
+    do
+      `s := `s + (array a `i)
+    od  
+    \<lbrace> `s = sum_to a (len a) \<rbrace>"
+apply hoare
+apply auto
+apply (case_tac a)
+apply auto
+apply (case_tac "b > i x")
+apply auto
+prefer 3
+apply (case_tac a)
+apply force
+apply (case_tac a)
+apply auto
+apply (case_tac a)
+apply auto
+apply force
+
+
+apply clarsimp
+apply (subst card_UN_disjoint[symmetric])
+apply (rule antisym)
+prefer 3
+apply (case_tac a)
+apply auto
+apply (case_tac a)
+apply auto
+
+
+apply simp
+apply force
+apply force
+apply simp
+apply (subst Collect_neg_eq[symmetric])
+apply (subst linorder_not_le)
+apply simp
+apply auto
+apply hoare_step
+apply hoare_step
+defer
+defer
+apply hoare_step
+apply hoare_step
+defer
+apply hoare_step
+apply hoare_step
+apply hoare_step
+prefer 2
+apply force
+apply simp
+apply hoare
+apply simp
+apply force
+apply clarsimp
+apply auto
 
 end

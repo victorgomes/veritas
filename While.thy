@@ -17,6 +17,12 @@ type_synonym ('v, 's) var = "('v, 's) lval \<times> ('v, 's) rval"
 abbreviation upd_var :: "('v, 's) var \<Rightarrow> ('v, 's) lval" ("upd _" 100) where "upd_var \<equiv> fst"
 abbreviation val_var :: "('v, 's) var \<Rightarrow> ('v, 's) rval" ("val _" 100) where "val_var \<equiv> snd"
 
+text {* Arrays *}
+(*
+type_synonym 'a array = "'a list"
+*)
+text {* Commands *}
+
 definition abort :: "'s rel" ("abort") where "abort \<equiv> {}"
 
 definition skip :: "'s rel" ("skip") where "skip \<equiv> Id" 
@@ -38,6 +44,9 @@ definition cond :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel \<Rightarro
 
 definition cwhile :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
   "cwhile b x \<equiv> (\<lfloor>b\<rfloor>;x)\<^sup>*; \<lfloor>-b\<rfloor>"
+
+definition cfor :: "('v :: {order, plus, one}, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+  "cfor j n m x \<equiv> assign (upd j) n; cwhile {s. (val j) s \<le> m s} (x; assign (upd j) (\<lambda>s. (val j) s + 1))"
 
 definition dyn :: "('s \<Rightarrow> 's rel) \<Rightarrow> 's rel" ("\<lceil>_\<rceil>" 100) where
   "\<lceil>g\<rceil> \<equiv> {(s, s'). (s, s') \<in> g s}"
@@ -64,6 +73,9 @@ text {* Annotated programs for automatic verification *}
 
 definition awhile :: "'s set \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
   "awhile i b x \<equiv> cwhile b x"
+
+definition afor :: "'s set  \<Rightarrow> ('v :: {order, plus, one}, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+  "afor i j n m x \<equiv> cfor j n m x"
 
 definition apre :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
   "apre p x \<equiv> x"
