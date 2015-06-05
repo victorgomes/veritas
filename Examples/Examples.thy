@@ -1,5 +1,5 @@
 theory Examples
-  imports "../Syntax" "../Array"
+  imports "../Syntax"
 begin
 
 record state =
@@ -74,69 +74,112 @@ lemma array_sum: "\<turnstile> \<lbrace> True \<rbrace>
         od
       \<lbrace> `s = array_sum 1 N a \<rbrace>"
     by hoare auto
-    
 
 hide_const s i
 
 record power_state =
   b:: nat
   i :: nat
+  n :: nat
 
 lemma power:
-  "\<turnstile> \<lbrace> n \<ge> 1 \<rbrace>
+  "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace>
     `i := 1;
     `b := a;
-    while `i < n
-    inv `b = a ^ `i \<and> `i \<le> n
+    while `i < `n
+    inv `b = a ^ `i \<and> `i \<le> `n
     do
       `b := `b * a;
       `i := `i + 1
     od
-  \<lbrace> `b = a ^ n \<rbrace>"
+  \<lbrace> `b = a ^ `n \<rbrace>"
   by hoare auto
 
-hide_const i b
+lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
+    `b := a;
+    for `i := 1 to `n do
+      `b := `b * a
+    od  
+    \<lbrace> `b = a ^ `n \<rbrace>"
+    by hoare auto
+
+hide_const i b n
 
 record ls_state =
   i :: nat
   j :: nat
+  n :: nat
 
 lemma linear_search: 
   "\<turnstile> \<lbrace> True \<rbrace>
     `i := 1;
     while `i \<le> N
-    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n)
+    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a k \<noteq> m) \<or> (a `j = m)
     do
-      if a at `i = n then
+      if a `i = m then
         `j := `i
       fi;
       `i := `i + 1
     od
-  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n) \<rbrace>" 
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a k \<noteq> m) \<or> (a `j = m) \<rbrace>" 
   apply (hoare, auto)
   using less_SucE by blast
 
-hide_const i j
+lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
+    `j := 1;
+    for `i := 1 to `n do
+      if a `i = m then
+        `j := `i
+      fi
+    od
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k < `n \<longrightarrow> a k \<noteq> m) \<or> (a `j = m) \<rbrace>" 
+  apply (hoare, auto)
+  using less_SucE by blast
 
-(*
-record bubble =
+hide_const i j n
+
+record 'a :: order bubble =
   i :: nat
   j :: nat
+  k :: nat
+  a :: "'a array"
 
 lemma bubble: 
   "\<turnstile> \<lbrace> True \<rbrace>
-    while `i > 1
-    inv array_sorted (`i + 1) a
+    `i := n;
+    while `i > 0
+    inv array_sorted (`i + 1) (n - `i) `a \<and> `i \<le> n
+      \<and> (\<forall>x. 1 \<le> x \<and> x \<le> `i \<longrightarrow> (\<forall>y. `i < y \<and> y \<le> n \<longrightarrow> `a(x) \<le> `a(y)))
     do
+      `j := 1;
       while `j < `i
-      inv \<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> a at k \<le> a at `j
+      inv (\<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> `a(k) \<le> `a(`j))
+        \<and> array_sorted (`i + 1) (n - `i) `a \<and> `i \<le> n \<and> `i > 0
+        \<and> (\<forall>x. 1 \<le> x \<and> x \<le> `i \<longrightarrow> (\<forall>y. `i < y \<and> y \<le> n \<longrightarrow> `a(x) \<le> `a(y))))
       do
-        `j := `k + 1
-      od
+        if `a(`j) > `a(`j + 1) then
+          `k := `a(`j);
+          `a(`j) := `a(`j + 1);
+          `a(`j + 1) := `k
+        fi;
+        `j := `j + 1
+      od;
+      `i := `i - 1
     od
-  \<lbrace> array_sorted 1 a \<rbrace>"
+  \<lbrace> array_sorted 1 n `a \<rbrace>"
   apply hoare
-*)
+  apply clarsimp
+defer
+defer
+  apply clarsimp
+  apply clarsimp
+  apply simp
+  apply clarsimp
+  apply (rule conjI)
+
+
+
+
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"
 | "fact (Suc n) = (Suc n) * fact n"

@@ -1,5 +1,5 @@
 theory Syntax
-  imports Hoare
+  imports Hoare Array
 begin
 
 text {* 
@@ -22,22 +22,21 @@ text {*
 
   R ::= begin S return y end    (functions)
 *}
-
+                                                                                                
 syntax
   "_quote"      :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
-  "_antiquote"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [1000] 1000) 
-  "_quote2"     :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>2_\<guillemotright>)" [0] 1000)
-  "_antiquote2" :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`2_" [1000] 1000)
+  "_antiquote"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [100] 1000) 
 
   "_subst"      :: "'s set \<Rightarrow> 'v \<Rightarrow> idt \<Rightarrow> 's set"          ("_[_'/`_]" [1000] 999)
-  "_assign"     :: "idt \<Rightarrow> 'a \<Rightarrow> 's rel"                    ("(`_ :=/ _)" [0, 65] 62)
+  "_assign"     :: "idt \<Rightarrow> 'v \<Rightarrow> 's rel"                    ("(`_ :=/ _)" [0, 65] 62)
+  "_asgn_array" :: "idt \<Rightarrow> nat \<Rightarrow> 'v \<Rightarrow> 's rel"             ("(`_ (_) :=/ _)" [0, 0, 65] 62)
 
   "_cond"       :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel \<Rightarrow> 's rel"   ("(0if _ then//  _//else//  _//fi)" [0,0,0] 62)
   "_cond_skip"  :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel"             ("(0if _//then _//fi)" [0,0] 62)
   "_while"      :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel"             ("(0while  _//do  _//od)" [0, 0] 62)
   "_awhile"     :: "'s set \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel"   ("(0while _//inv _//do// _//od)" [0, 0, 0] 62)
 
-  "_for"        :: "idt \<Rightarrow> 'v \<Rightarrow> 'v \<Rightarrow> 's rel \<Rightarrow> 's rel"    ("(0for `_ := _ to _//do  _//od)" [0, 0] 62)
+  "_for"        :: "idt \<Rightarrow> 'v \<Rightarrow> idt \<Rightarrow> 's rel \<Rightarrow> 's rel"    ("(0for `_ := _ to `_ do//  _//od)" [0, 65, 50, 0] 62)
   "_afor"        :: "idt \<Rightarrow> 'v \<Rightarrow> 'v \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel" ("(0for `_ := _ to _//inv _ //do  _//od)" [0, 0] 62)
 
   "_apre"       :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel"               ("\<lbrace> _ \<rbrace>// _" [0, 62] 62)
@@ -66,15 +65,15 @@ parse_translation {*
 
 translations
   "p [t/`u]"                == "_update_name u (\<lambda>_. t) \<in> p"
-  "`u := t"                 == "CONST assign(_update_name u) \<guillemotleft>t\<guillemotright>"
+  "`u := t"                 == "CONST assign (_update_name u) \<guillemotleft>t\<guillemotright>"
+  "`a(i) := t"              => "CONST assign (_update_name a) \<guillemotleft>(CONST fun_upd (`a) i t)\<guillemotright>"
 
   "if b then x else y fi"   => "CONST cond (CONST Collect \<guillemotleft>b\<guillemotright>) x y"
   "if b then x fi"          == "if b then x else skip fi"
   "while b do x od"         == "CONST cwhile (CONST Collect \<guillemotleft>b\<guillemotright>) x"
   "while b inv i do x od"   == "CONST awhile (CONST Collect \<guillemotleft>i\<guillemotright>) (CONST Collect \<guillemotleft>b\<guillemotright>) x"
 
-  "for `i := n to m do x od"=> "CONST cfor (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> \<guillemotleft>m\<guillemotright> x"
-  "for `i := n to m inv I do x od"=> "CONST afor (CONST Collect \<guillemotleft>I\<guillemotright>) (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> \<guillemotleft>m\<guillemotright> x"
+  "for `i := n to `m do x od"=> "CONST cfor (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> (CONST Pair (_update_name m) m) x"
 
   "\<lbrace> p \<rbrace> x"                 == "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
   "\<lbrace> u . p \<rbrace> x"             => "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
@@ -89,8 +88,6 @@ translations
   "\<turnstile> \<lbrace> p \<rbrace> x \<lbrace> q \<rbrace>"         => "CONST ht (CONST Collect \<guillemotleft>p\<guillemotright>) x (CONST Collect \<guillemotleft>q\<guillemotright>)"
   "\<turnstile> \<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"     => "\<forall>u. CONST ht (CONST Collect \<guillemotleft>p\<guillemotright>) x (CONST Collect \<guillemotleft>q\<guillemotright>)"
   
-
-(* Pretty printing *)
 
 syntax ("" output)
   "_assert"    :: "'s \<Rightarrow> 's set"                             ("[_]" [0] 1000)
@@ -119,6 +116,9 @@ ML {*
   fun fun_tr' [x, (Const _ $ _ $ z)] = Syntax.const @{syntax_const "_fun"} $ x $ z
     | fun_tr' _ = raise Match;
 
+  fun for_tr' [(Const _ $ _ $ i), n, (Const _ $ _ $ m), x] = (quote_tr' (Syntax.const @{syntax_const "_for"} $ i) [n]) $ m $ x
+    | for_tr' _ = raise Match;
+
   fun print_tr' name [x, y, z] = Syntax.const name $ x $ y $ z
     | print_tr' name [x, y] = Syntax.const name $ x $ y
     | print_tr' name [x] = Syntax.const name $ x
@@ -139,6 +139,7 @@ print_translation {*
   (@{const_syntax apre}, K (print_tr' @{syntax_const "_apre"})),
 
   (@{const_syntax loc_block}, K local_tr'),
+  (@{const_syntax cfor}, K for_tr'),
   (@{const_syntax fun_call}, K call_tr'),
   (@{const_syntax fun_block}, K fun_tr'),
 

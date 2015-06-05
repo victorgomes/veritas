@@ -20,7 +20,27 @@ fun array_sorted :: "nat \<Rightarrow> nat \<Rightarrow> 'a :: order array \<Rig
 fun new_array :: "'a list \<Rightarrow> 'a array" where
   "new_array xs = nth xs"
 
-value "array_sorted 1 3 (new_array [0, 5, 8 :: nat, 4])"
+lemma "array_sorted i n a \<Longrightarrow> array_sorted (Suc i) (n - 1) a"
+  apply (induct n)
+  apply auto
+  apply (case_tac n)
+  apply auto
+  apply (case_tac nat)
+by auto
+
+lemma last_num: "array_sorted i (Suc (Suc n)) a \<Longrightarrow> a (i + n) \<le> a (i + Suc n)"
+  by (cases n) auto
+
+lemma "i > 0  \<Longrightarrow> array_sorted i (Suc (Suc n)) a \<Longrightarrow> array_sorted (i - 1) (Suc (Suc (Suc n))) a"
+apply (induct n)
+apply simp
+apply force
+apply auto
+apply (cases n)
+apply force
+apply (subgoal_tac 
+
+value "array_sorted 1 2 (new_array [2, 2, 1 :: nat])"
 
 
 end

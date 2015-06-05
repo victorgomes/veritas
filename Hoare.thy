@@ -94,9 +94,17 @@ lemma hl_conseq: "\<forall>z. ht (P' z) c (Q' z) \<Longrightarrow> \<forall>s. s
 lemma hl_kleymann: "\<forall>z. ht (P' z) x (Q' z) \<Longrightarrow> \<forall>s t. (\<forall>z. s \<in> P' z \<longrightarrow> t \<in> Q' z) \<longrightarrow> (\<forall>z. s \<in> P z \<longrightarrow> t \<in> Q z) \<Longrightarrow> \<forall>z. ht (P z) x (Q z)"
   by (fastforce simp: apre_def seq_def ht_def)
 
-lemma hl_for [hl_rules]: "ht P (assign j_upd n) R \<Longrightarrow> ht ({s. j s \<le> m s} \<inter> R) x (subst R j_upd (\<lambda>s. j s + 1)) \<Longrightarrow> R \<inter> -{s. j s \<le> m s} \<subseteq> Q \<Longrightarrow>  ht P (cfor (j_upd, j) n m x) Q"
-  by (hoare simp: cfor_def hl: hl_while first: hl_post [where Q'="(-{s. j s \<le> m s} \<sqinter> R)"]) force
-
+lemma hl_for [hl_rules]: "\<forall>s. m_upd(\<lambda>_. m s) s = s \<Longrightarrow> 
+  ht P (assign j_upd n) (subst Q m_upd j \<inter> {s. j s \<le> m s}) \<Longrightarrow> 
+  ht ({s. j s < m s} \<inter> subst Q m_upd j) x (subst (subst Q m_upd j \<inter> {s. j s \<le> m s}) j_upd (\<lambda>s. j s + 1)) \<Longrightarrow> 
+  ht P (cfor (j_upd, j) n (m_upd, m) x) Q"
+  apply (hoare simp: cfor_def first: hl_post [where Q'="(-{s. j s < m s} \<inter> (subst Q m_upd j \<inter> {s. j s \<le> m s}))"] hl: hl_while)
+  apply (subgoal_tac "-{s. j s < m s} \<inter> (subst Q m_upd j \<inter> {s. j s \<le> m s}) = {s. j s = m s} \<inter> subst Q m_upd j")
+  apply (force simp: subst_def)
+  apply force
+  apply (subgoal_tac "{s. j s < m s} \<inter> (subst Q m_upd j \<inter> {s. j s \<le> m s}) = {s. j s < m s} \<inter> subst Q m_upd j")
+  apply force+
+done
 (***********************************************************************************************)
 
 text {* Blocks / Procedures / Recursive Calls *}
@@ -129,10 +137,6 @@ lemma hl_rec [hl_rules]: "mono f \<Longrightarrow> (\<And>x. \<forall>z. ht (P z
 (***********************************************************************************************)
 
 text {* Annotated programs *}
-
-lemma hl_afor [hl_rules]: "ht P (assign j_upd n) R \<Longrightarrow> ht ({s. j s < m s} \<inter> R) x (subst R j_upd (\<lambda>s. j s + 1)) \<Longrightarrow> R \<inter> {s. j s = m s} \<subseteq> Q \<Longrightarrow>  ht P (afor R (j_upd, j) n m x) Q"
-  apply (hoare simp: afor_def)
-sorry
 
 lemma hl_awhile [hl_rules]: "P \<subseteq> i \<Longrightarrow> -b \<inter> i \<subseteq> Q \<Longrightarrow> ht (b \<sqinter> i) x i \<Longrightarrow> ht P (awhile i b x) Q"
   by (hoare simp: awhile_def first: hl_conseq hl: hl_while) force
