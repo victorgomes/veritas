@@ -25,7 +25,7 @@ text {*
                                                                                                 
 syntax
   "_quote"      :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
-  "_antiquote"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [100] 1000) 
+  "_antiquote"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [1000] 1000) 
 
   "_subst"      :: "'s set \<Rightarrow> 'v \<Rightarrow> idt \<Rightarrow> 's set"          ("_[_'/`_]" [1000] 999)
   "_assign"     :: "idt \<Rightarrow> 'v \<Rightarrow> 's rel"                    ("(`_ :=/ _)" [0, 65] 62)

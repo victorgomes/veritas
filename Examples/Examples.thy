@@ -67,12 +67,12 @@ lemma array_sum: "\<turnstile> \<lbrace> True \<rbrace>
         `i := 0;
         `s := 0;
         while `i < N
-        inv `s = array_sum 1 `i a \<and> `i \<le> N
+        inv `s = array_sum a 1 (`i) \<and> `i \<le> N
         do
           `i := `i + 1;
-          `s := `s + a `i
+          `s := `s + a(`i)
         od
-      \<lbrace> `s = array_sum 1 N a \<rbrace>"
+      \<lbrace> `s = array_sum a 1 N \<rbrace>"
     by hoare auto
 
 hide_const s i
@@ -114,25 +114,25 @@ lemma linear_search:
   "\<turnstile> \<lbrace> True \<rbrace>
     `i := 1;
     while `i \<le> N
-    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a k \<noteq> m) \<or> (a `j = m)
+    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m)
     do
-      if a `i = m then
+      if a(`i) = m then
         `j := `i
       fi;
       `i := `i + 1
     od
-  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a k \<noteq> m) \<or> (a `j = m) \<rbrace>" 
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m) \<rbrace>" 
   apply (hoare, auto)
   using less_SucE by blast
 
 lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
     `j := 1;
     for `i := 1 to `n do
-      if a `i = m then
+      if a(`i) = m then
         `j := `i
       fi
     od
-  \<lbrace> (\<forall>k. 1 \<le> k \<and> k < `n \<longrightarrow> a k \<noteq> m) \<or> (a `j = m) \<rbrace>" 
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k < `n \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m) \<rbrace>" 
   apply (hoare, auto)
   using less_SucE by blast
 
@@ -148,14 +148,13 @@ lemma bubble:
   "\<turnstile> \<lbrace> True \<rbrace>
     `i := n;
     while `i > 0
-    inv array_sorted (`i + 1) (n - `i) `a \<and> `i \<le> n
-      \<and> (\<forall>x. 1 \<le> x \<and> x \<le> `i \<longrightarrow> (\<forall>y. `i < y \<and> y \<le> n \<longrightarrow> `a(x) \<le> `a(y)))
+    inv array_sorted (`a) (`i + 1) (n - `i) \<and> `i \<le> n
     do
       `j := 1;
       while `j < `i
-      inv (\<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> `a(k) \<le> `a(`j))
-        \<and> array_sorted (`i + 1) (n - `i) `a \<and> `i \<le> n \<and> `i > 0
-        \<and> (\<forall>x. 1 \<le> x \<and> x \<le> `i \<longrightarrow> (\<forall>y. `i < y \<and> y \<le> n \<longrightarrow> `a(x) \<le> `a(y))))
+      inv (\<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> `a(k) \<le> `a(`j)) \<and> `i \<le> n \<and> `i > 0
+        \<and> array_sorted (`a) (`i + 1) (n - `i)  \<and>
+      (\<forall>k. 1 \<le> k \<and> k \<le> `i \<longrightarrow> `a k \<le> `a (`i + 1))
       do
         if `a(`j) > `a(`j + 1) then
           `k := `a(`j);
@@ -166,12 +165,30 @@ lemma bubble:
       od;
       `i := `i - 1
     od
-  \<lbrace> array_sorted 1 n `a \<rbrace>"
+  \<lbrace> array_sorted (`a) 1 n \<rbrace>"
   apply hoare
   apply clarsimp
+  apply clarsimp
+  apply (rule conjI)
+  apply (subgoal_tac "Suc n - i x = Suc (n - i x)")
+  apply simp
+  apply (rule tt2)
+  apply simp
+  apply simp
+  apply simp
+  apply simp
+  apply force
+prefer 3
+  apply clarsimp
+  apply clarsimp
+
+
+
 defer
 defer
   apply clarsimp
+defer
+  apply simp
   apply clarsimp
   apply simp
   apply clarsimp
