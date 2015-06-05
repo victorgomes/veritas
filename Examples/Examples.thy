@@ -1,5 +1,5 @@
 theory Examples
-  imports "../Syntax"
+  imports "../Syntax" "../Array"
 begin
 
 record state =
@@ -59,6 +59,84 @@ lemma swap_annotated:
    \<lbrace>`x = yo \<and> `y = xo\<rbrace>"
   by (hoare hl: hl_apre_classic) auto
 
+record sum_state = 
+  s :: nat
+  i :: nat
+
+lemma array_sum: "\<turnstile> \<lbrace> True \<rbrace>
+        `i := 0;
+        `s := 0;
+        while `i < N
+        inv `s = array_sum 1 `i a \<and> `i \<le> N
+        do
+          `i := `i + 1;
+          `s := `s + a `i
+        od
+      \<lbrace> `s = array_sum 1 N a \<rbrace>"
+    by hoare auto
+    
+
+hide_const s i
+
+record power_state =
+  b:: nat
+  i :: nat
+
+lemma power:
+  "\<turnstile> \<lbrace> n \<ge> 1 \<rbrace>
+    `i := 1;
+    `b := a;
+    while `i < n
+    inv `b = a ^ `i \<and> `i \<le> n
+    do
+      `b := `b * a;
+      `i := `i + 1
+    od
+  \<lbrace> `b = a ^ n \<rbrace>"
+  by hoare auto
+
+hide_const i b
+
+record ls_state =
+  i :: nat
+  j :: nat
+
+lemma linear_search: 
+  "\<turnstile> \<lbrace> True \<rbrace>
+    `i := 1;
+    while `i \<le> N
+    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n)
+    do
+      if a at `i = n then
+        `j := `i
+      fi;
+      `i := `i + 1
+    od
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a at k \<noteq> n) \<or> (a at `j = n) \<rbrace>" 
+  apply (hoare, auto)
+  using less_SucE by blast
+
+hide_const i j
+
+(*
+record bubble =
+  i :: nat
+  j :: nat
+
+lemma bubble: 
+  "\<turnstile> \<lbrace> True \<rbrace>
+    while `i > 1
+    inv array_sorted (`i + 1) a
+    do
+      while `j < `i
+      inv \<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> a at k \<le> a at `j
+      do
+        `j := `k + 1
+      od
+    od
+  \<lbrace> array_sorted 1 a \<rbrace>"
+  apply hoare
+*)
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"
 | "fact (Suc n) = (Suc n) * fact n"
