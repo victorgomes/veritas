@@ -1,3 +1,5 @@
+section {* Syntax for the while-language *}
+
 theory Syntax
   imports Hoare Array
 begin

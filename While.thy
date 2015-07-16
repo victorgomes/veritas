@@ -1,3 +1,5 @@
+section {* While Programming Language *}
+
 theory While
   imports Main
 begin

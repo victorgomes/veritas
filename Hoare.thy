@@ -1,3 +1,5 @@
+section {* Verification condition generator *}
+
 theory Hoare
   imports While "$AFP/KAT_and_DRA/SingleSorted/KAT_Models" "$ISABELLE_HOME/src/HOL/Eisbach/Eisbach"
 begin
@@ -12,7 +14,7 @@ notation inf (infixl "\<sqinter>" 60)
 
 (***********************************************************************************************)
 
-text {* Verification condition generator *}
+text {* \emph{hoare} tactic *}
 
 named_theorems hl_rules
 

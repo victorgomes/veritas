@@ -36,10 +36,23 @@ definition local :: "('a state) rel \<Rightarrow> bool" where
   
 lemma local_skip: "local skip"
   by (auto simp: local_def skip_def)
+
+
+lemma "\<forall>t. (\<forall>s. u_update (\<lambda>_. t s) s = s) \<longrightarrow> t = u"
+  apply (rule allI)
+  apply (rule impI)
+  apply (rule ext)
+oops
+
+lemma "\<forall>t. (\<forall>s. u_upd (\<lambda>_. t s) s = s) \<longrightarrow> t = u \<Longrightarrow> local (assign u_upd t)"
+  apply (auto simp: local_def seq_def assign_def graph_def)
+  apply (rule_tac x=h' in exI)
+  apply auto
+  
   
 lemma local_seq: "local x \<Longrightarrow> local y \<Longrightarrow> local (x; y)"
   apply (auto simp: local_def seq_def)
-nitpick
+
   
 
 end

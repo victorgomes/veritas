@@ -1,3 +1,5 @@
+section {* Arrays *}
+
 theory Array
   imports Main
 begin
