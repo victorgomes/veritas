@@ -167,34 +167,7 @@ lemma bubble:
     od
   \<lbrace> array_sorted (`a) 1 n \<rbrace>"
   apply hoare
-  apply clarsimp
-  apply clarsimp
-  apply (rule conjI)
-  apply (subgoal_tac "Suc n - i x = Suc (n - i x)")
-  apply simp
-  apply (rule tt2)
-  apply simp
-  apply simp
-  apply simp
-  apply simp
-  apply force
-prefer 3
-  apply clarsimp
-  apply clarsimp
-
-
-
-defer
-defer
-  apply clarsimp
-defer
-  apply simp
-  apply clarsimp
-  apply simp
-  apply clarsimp
-  apply (rule conjI)
-
-
+oops
 
 
 primrec fact :: "nat \<Rightarrow> nat" where
@@ -257,7 +230,7 @@ lemma div:
   \<lbrace> `x = `q * `y + `r \<and> `r \<ge> 0 \<and> `r < `y \<rbrace>"
   by hoare auto
 
-hide_const x y z q r
+hide_const a x y z q r
 
 lemma extend_euclid_invariant:
   assumes "(a' :: int)\<cdot>m + b'\<cdot>n = c" "a\<cdot>m + b\<cdot>n = d" "c = q\<cdot>d + r"
