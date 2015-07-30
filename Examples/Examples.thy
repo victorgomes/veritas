@@ -13,7 +13,8 @@ lemma swap:
       `x := `y;
       `y := `z
    \<lbrace>`x = yo \<and> `y = xo\<rbrace>"
-  by hoare auto
+by hoare auto
+(*
 
 lemma "\<turnstile> \<lbrace> `x = n \<rbrace> 
   local `x := `x + 1 in
@@ -58,7 +59,7 @@ lemma swap_annotated:
       `y := `z
    \<lbrace>`x = yo \<and> `y = xo\<rbrace>"
   by (hoare hl: hl_apre_classic) auto
-
+*)
 record sum_state = 
   s :: nat
   i :: nat
@@ -94,7 +95,7 @@ lemma power:
     od
   \<lbrace> `b = a ^ `n \<rbrace>"
   by hoare auto
-
+(*
 lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
     `b := a;
     for `i := 1 to `n do
@@ -102,7 +103,7 @@ lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace>
     od  
     \<lbrace> `b = a ^ `n \<rbrace>"
     by hoare auto
-
+*)
 hide_const i b n
 
 record ls_state =
@@ -123,8 +124,10 @@ lemma linear_search:
     od
   \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m) \<rbrace>" 
   apply (hoare, auto)
-  using less_SucE by blast
-
+(*
+  using less_SucE by blas
+*)
+(*
 lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
     `j := 1;
     for `i := 1 to `n do
@@ -135,7 +138,7 @@ lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace>
   \<lbrace> (\<forall>k. 1 \<le> k \<and> k < `n \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m) \<rbrace>" 
   apply (hoare, auto)
   using less_SucE by blast
-
+*)
 hide_const i j n
 
 record 'a :: order bubble =
@@ -212,7 +215,10 @@ lemma euclids:
       `x := `z
     od 
     \<lbrace>gcd xo yo = `x\<rbrace>"
-  by (hoare, auto) (metis gcd_red_nat)
+    apply hoare
+    apply auto
+    
+  by (hoare, auto) (metis gcd_red_nat
 
 record div_state = state +
   q :: nat

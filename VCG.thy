@@ -1,7 +1,8 @@
 section {* Verification condition generator *}
 
-theory Hoare
+theory VCG
   imports While "$AFP/KAT_and_DRA/SingleSorted/KAT_Models" "$ISABELLE_HOME/src/HOL/Eisbach/Eisbach"
+  Heap
 begin
 
 no_notation comp_op ("n_" [90] 91)
@@ -95,7 +96,7 @@ lemma hl_conseq: "\<forall>z. ht (P' z) c (Q' z) \<Longrightarrow> \<forall>s. s
 
 lemma hl_kleymann: "\<forall>z. ht (P' z) x (Q' z) \<Longrightarrow> \<forall>s t. (\<forall>z. s \<in> P' z \<longrightarrow> t \<in> Q' z) \<longrightarrow> (\<forall>z. s \<in> P z \<longrightarrow> t \<in> Q z) \<Longrightarrow> \<forall>z. ht (P z) x (Q z)"
   by (fastforce simp: apre_def seq_def ht_def)
-
+(*
 lemma hl_for [hl_rules]: "\<forall>s. m_upd(\<lambda>_. m s) s = s \<Longrightarrow> 
   ht P (assign j_upd n) (subst Q m_upd j \<inter> {s. j s \<le> m s}) \<Longrightarrow> 
   ht ({s. j s < m s} \<inter> subst Q m_upd j) x (subst (subst Q m_upd j \<inter> {s. j s \<le> m s}) j_upd (\<lambda>s. j s + 1)) \<Longrightarrow> 
@@ -107,13 +108,14 @@ lemma hl_for [hl_rules]: "\<forall>s. m_upd(\<lambda>_. m s) s = s \<Longrightar
   apply (subgoal_tac "{s. j s < m s} \<inter> (subst Q m_upd j \<inter> {s. j s \<le> m s}) = {s. j s < m s} \<inter> subst Q m_upd j")
   apply force+
 done
+*)
 (***********************************************************************************************)
 
 text {* Blocks / Procedures / Recursive Calls *}
 
 lemma hl_dyn [hl_rules]: "\<forall>s \<in> P. ht P (g s) Q \<Longrightarrow> ht P (\<lceil>g\<rceil>) Q"
   by (fastforce simp: ht_def seq_def dyn_def)
-
+(*
 lemma hl_local_inv: "\<forall>s s'. z (z_upd (\<lambda>_. z s) s') = z s \<Longrightarrow> P \<le> {s. z s = u} \<Longrightarrow> ht P (loc_block (z_upd, z) t x) {s. z s = u }"
   by (auto simp: block_def loc_block_def graph_def dyn_def seq_def ht_def)
 
@@ -128,13 +130,23 @@ lemma hl_fun_block_inv: "\<forall>s s'. y (y_upd (\<lambda>_. y s) s') = y s \<L
 
 lemma hl_fun_block: "\<forall>s. ht P R {t. y_upd (\<lambda>_. y s) (z_upd (\<lambda>_. y t) t) \<in> Q} \<Longrightarrow> ht P (fun_call z_upd (R, (y_upd, y))) Q"
   by (auto simp: fun_call_def intro: hl_block)
-
+*)
 lemma hl_Sup: "\<forall>x \<in> X. \<forall>z. ht (P z) (x z) (Q z) \<Longrightarrow> \<forall>z. ht (P z) (Sup X z) (Q z)"
   by (fastforce simp: ht_def seq_def)
 
 lemma hl_rec [hl_rules]: "mono f \<Longrightarrow> (\<And>x. \<forall>z. ht (P z) (x z) (Q z) \<Longrightarrow> \<forall>z. ht (P z) (f x z) (Q z)) \<Longrightarrow> \<forall>z. ht (P z) (lfp f z) (Q z)"
   apply (erule lfp_ordinal_induct [where f=f], simp)
   by (force intro!: hl_Sup)
+
+(***********************************************************************************************)
+
+text {* Frame rule -- Separation logic *}
+
+no_notation times (infixl "*" 70)
+
+lemma "local x \<Longrightarrow> ht p x q \<Longrightarrow> ht (p * r) x (q * r)"
+  apply (auto simp: ht_def local_def sep_conj_def)
+  
 
 (***********************************************************************************************)
 
@@ -161,14 +173,14 @@ lemma hl_aprog_classic : "P \<le> P' \<Longrightarrow> Q' \<le> Q \<Longrightarr
 (***********************************************************************************************)
 
 text {* When using hoare, rules should be applied in the following order *}
-
+(*
 declare 
   hl_local_inv [hl_rules]
   hl_loc_block [hl_rules]
   hl_fun_block_inv [hl_rules]
   hl_fun_block [hl_rules]
   hl_block [hl_rules]
-
+*)
 declare subst_def [simp]
-
+  and case_optionE [elim]
 end

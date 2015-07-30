@@ -1,58 +1,66 @@
 theory Heap
-  imports While
+  imports While Locality
 begin
 
-no_notation times (infixl "*" 70)
+section {* Heap *}
 
 type_synonym heap = "nat \<Rightarrow> nat option"
-type_synonym 'a state = "'a \<times> heap"
-type_synonym ('a, 'b) pred = "'b \<Rightarrow> 'a state set"
-
-section {* Heap *}
 
 definition ortho :: "heap \<Rightarrow> heap \<Rightarrow> bool" (infix "\<bottom>" 55)
   where "h1 \<bottom> h2 \<equiv> dom h1 \<inter> dom h2 = {}"
 
 lemma theI: "h x = Some y \<Longrightarrow> the (h x) = y"
-  by simp
+  by simp 
 
 lemma heap_divider: "h1 \<bottom> h2 \<Longrightarrow> h1 x = Some y \<Longrightarrow> (h1 ++ h2) x = Some y"
   by (auto simp: ortho_def map_add_def split: option.splits)
 
 lemma heap_add_comm: "h1 \<bottom> h2 \<Longrightarrow> h1 ++ h2 = h2 ++ h1"
   by (auto simp: ortho_def intro: map_add_comm)
-  
-section {* Predicates *}
 
-definition emp :: "('a, 'b) pred" where "emp \<equiv> \<lambda>_. {(s, h). h = Map.empty}"
+lemma singl_ortho: "[x \<mapsto> y] \<bottom> h \<longleftrightarrow> x \<notin> dom h"
+  by (auto simp: ortho_def)
 
-definition sep_conj :: "('a, 'b) pred \<Rightarrow> ('a, 'b) pred \<Rightarrow> ('a, 'b) pred" (infixl "*" 75) where
-  "P * Q \<equiv> \<lambda>u. {(s, h1 ++ h2) | s h1 h2. (s, h1) \<in> (P u) \<and> (s, h2) \<in> (Q u) \<and> h1 \<bottom> h2}"  
+interpretation heap?: locality "op ++" "op \<bottom>" Map.empty
+  apply default
+  apply (auto simp: ortho_def)
+  using map_add_comm by blast
 
-section {* Locality *}  
+section {* Commands *}
 
-definition local :: "('a state) rel \<Rightarrow> bool" where
-  "local x \<equiv> \<forall>s h' ho dh. h' \<bottom> dh \<and> ((s, ho), (s, h' ++ dh)) \<in> x \<longrightarrow> (\<exists>h. h \<bottom> dh \<and> ho = h ++ dh \<and> ((s, h), (s, h')) \<in> x)"
-  
-lemma local_skip: "local skip"
-  by (auto simp: local_def skip_def)
+lemma local_skip: "Local \<lbrakk>skip\<rbrakk>"
+  by (auto simp: Local_def skip_def ptran_def)
 
+lemma safe_skip: "safe skip"
+  by (simp add: Local_local local_safe local_skip)
 
-lemma "\<forall>t. (\<forall>s. u_update (\<lambda>_. t s) s = s) \<longrightarrow> t = u"
-  apply (rule allI)
-  apply (rule impI)
-  apply (rule ext)
-oops
+lemma frame_skip: "frame skip"
+  by (simp add: Local_local local_frame local_skip)
 
-lemma "\<forall>t. (\<forall>s. u_upd (\<lambda>_. t s) s = s) \<longrightarrow> t = u \<Longrightarrow> local (assign u_upd t)"
-  apply (auto simp: local_def seq_def assign_def graph_def)
-  apply (rule_tac x=h' in exI)
-  apply auto
-  
-  
-lemma local_seq: "local x \<Longrightarrow> local y \<Longrightarrow> local (x; y)"
-  apply (auto simp: local_def seq_def)
+definition lookup :: "(nat, 'a) lval \<Rightarrow> ('a \<Rightarrow> nat) \<Rightarrow> ('a, 'b) state rel" where
+  "lookup u_upd t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of Some (s, h) \<Rightarrow> if t s \<in> dom h then Some (u_upd (\<lambda>_. the (h (t s))) s, h) else None | None \<Rightarrow> None\<rangle>"
 
-  
+definition mutation :: "('a \<Rightarrow> nat) \<Rightarrow> ('a \<Rightarrow> nat) \<Rightarrow> ('a, 'b) state rel" where
+  "mutation u t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of Some (s, h) \<Rightarrow> if u s \<in> dom h then Some (s, h(u s \<mapsto> t s)) else None | None \<Rightarrow> None\<rangle>"
+
+lemma "safe (assign u_upd t)"
+  by (auto simp add: safe_def assign_def graph_def)
+
+lemma "frame (assign u_upd t)"
+  by (auto simp add: frame_def assign_def graph_def)
+
+lemma "safe (lookup u_upd t)"
+  by (auto simp add: safe_def lookup_def graph_def partial_semigroup_class.pleq_def)
+
+lemma "frame (lookup u_upd t)"
+  by (auto simp add: frame_def lookup_def graph_def)
+
+lemma "safe (mutation u_upd t)"
+  by (auto simp add: safe_def mutation_def graph_def partial_semigroup_class.pleq_def)
+
+lemma "frame (mutation u_upd t)"
+  apply (clarsimp simp add: frame_def mutation_def graph_def ortho_def)
+  by (metis disjoint_iff_not_equal domI map_add_upd_left)
+
 
 end

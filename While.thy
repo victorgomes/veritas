@@ -12,78 +12,110 @@ notation Id_on ("\<lfloor>_\<rfloor>" 100)
 
 text {* Variables *}
 
+text {* 
+  The following convention on types are used:
+  - 's for store, a record of variables
+  - 'h for heap, a partial function from nat to nat
+  - 'a for state, the pair of 's and 'h or error state
+  - 'v for the value of a variable
+  The types are instantiated later on, and are usually generic.
+*}
+
+type_synonym ('s, 'h) state = "('s \<times> 'h) option"
+
+text {* The left value of a variable is an update function. *}
 type_synonym ('v, 's) lval = "('v \<Rightarrow> 'v) \<Rightarrow> 's \<Rightarrow> 's"
+
+text {* The right value of a variable is a retrieve function. *}
 type_synonym ('v, 's) rval = "'s \<Rightarrow> 'v"
+
+text {* A variable is then a pair of left and right values, satisfying some properties. *}
 type_synonym ('v, 's) var = "('v, 's) lval \<times> ('v, 's) rval"
 
-abbreviation upd_var :: "('v, 's) var \<Rightarrow> ('v, 's) lval" ("upd _" 100) where "upd_var \<equiv> fst"
-abbreviation val_var :: "('v, 's) var \<Rightarrow> ('v, 's) rval" ("val _" 100) where "val_var \<equiv> snd"
+abbreviation upd_var :: "('v, 'a) var \<Rightarrow> ('v, 'a) lval" ("upd _" 100) where "upd_var \<equiv> fst"
+abbreviation val_var :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval" ("val _" 100) where "val_var \<equiv> snd"
+
+definition consistent_var :: "('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> bool" where
+  "consistent_var u_upd u \<equiv> \<forall>s. u_upd (\<lambda>_. u s) s = s"
+
+definition consistent_var2 :: "('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> bool" where
+  "consistent_var2 u_upd u \<equiv> \<forall>t. consistent_var u_upd t \<longrightarrow> u = t"
 
 text {* Commands *}
 
-definition abort :: "'s rel" ("abort") where "abort \<equiv> {}"
+definition abort :: "'a rel" ("abort") where "abort \<equiv> {}"
 
-definition skip :: "'s rel" ("skip") where "skip \<equiv> Id" 
+definition skip :: "'a rel" ("skip") where "skip \<equiv> Id" 
 
-definition graph :: "('s \<Rightarrow> 's) \<Rightarrow> 's rel" ("\<langle>_\<rangle>" 100) where
-  "\<langle>f\<rangle> \<equiv> {(s, f s) | s. True}"
+definition graph :: "('a \<Rightarrow> 'a) \<Rightarrow> 'a rel" ("\<langle>_\<rangle>" 100) where
+  "\<langle>f\<rangle> \<equiv> {(\<sigma>, f \<sigma>) | \<sigma>. True}"
 
-definition subst :: "'s set \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's set" where
-  "subst P u_upd t \<equiv> Collect (\<lambda>s. u_upd (\<lambda>_. t s) s \<in> P)"
+abbreviation on_store :: "('s \<Rightarrow> 's) \<Rightarrow> ('s \<times> 'h) \<Rightarrow> ('s \<times> 'h)" where
+  "on_store f \<equiv> \<lambda>(s, h). (f s, h)"
 
-definition assign :: "('v, 's) lval \<Rightarrow> ('s \<Rightarrow> 'v) \<Rightarrow> 's rel" where
-  "assign u_upd t \<equiv> \<langle>\<lambda>s. u_upd (\<lambda>_. t s) s\<rangle>"
+abbreviation on_heap :: "('h \<Rightarrow> 'h) \<Rightarrow> ('s \<times> 'h) \<Rightarrow> ('s \<times> 'h)" where
+  "on_heap f \<equiv> \<lambda>(s, h). (s, f h)"
 
-definition seq :: "'s rel \<Rightarrow> 's rel \<Rightarrow> 's rel" (infixr ";" 60) where
+definition subst :: "('s, 'h) state set \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s, 'h) state set" where
+  "subst P u_upd t \<equiv> Collect (\<lambda>\<sigma>. (case \<sigma> of Some (s, h) \<Rightarrow> Some (u_upd (\<lambda>_. t s) s, h) | None \<Rightarrow> None) \<in> P)"
+
+definition assign :: "('v, 's) lval \<Rightarrow> ('s \<Rightarrow>'v) \<Rightarrow> ('s, 'h) state rel" where
+  "assign u_upd t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of Some (s, h) \<Rightarrow> Some (u_upd (\<lambda>_. t s) s, h) | None \<Rightarrow> None\<rangle>"
+
+definition seq :: "'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel" (infixr ";" 60) where
   "seq \<equiv> relcomp"
 
-definition cond :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition cond :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "cond b x y \<equiv> (\<lfloor>b\<rfloor>;x) \<union> (\<lfloor>-b\<rfloor>;y)"
 
-definition cwhile :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition cwhile :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "cwhile b x \<equiv> (\<lfloor>b\<rfloor>;x)\<^sup>*; \<lfloor>-b\<rfloor>"
 
-definition cfor :: "('v :: {linorder, plus, one}, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('v, 's) var \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+(*
+definition cfor :: "('v :: {linorder, plus, one}, 'a) var \<Rightarrow> ('v, 'a) rval \<Rightarrow> ('v, 'a) var \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "cfor j n m x \<equiv> assign (upd j) n; cwhile {s. (val j) s < (val m) s} (x; assign (upd j) (\<lambda>s. (val j) s + 1))"
+*)
 
-definition dyn :: "('s \<Rightarrow> 's rel) \<Rightarrow> 's rel" ("\<lceil>_\<rceil>" 100) where
-  "\<lceil>g\<rceil> \<equiv> {(s, s'). (s, s') \<in> g s}"
+definition dyn :: "('a \<Rightarrow> 'a rel) \<Rightarrow> 'a rel" ("\<lceil>_\<rceil>" 100) where
+  "\<lceil>g\<rceil> \<equiv> {(\<sigma>, \<sigma>'). (\<sigma>, \<sigma>') \<in> g \<sigma>}"
 
-definition block :: "'s rel \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> 's) \<Rightarrow> 's rel" where
-  "block x ret \<equiv> \<lceil>\<lambda>s. x; \<langle>ret s\<rangle>\<rceil>"
+definition block :: "'a rel \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> 'a) \<Rightarrow> 'a rel" where
+  "block x ret \<equiv> \<lceil>\<lambda>\<sigma>. x; \<langle>ret \<sigma>\<rangle>\<rceil>"
 
-definition loc_block :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+(*
+definition loc_block :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "loc_block z t x \<equiv> (block (\<langle>\<lambda>s. (upd z) (\<lambda>_. t s) s\<rangle>; x) (\<lambda>s. (upd z) (\<lambda>_. (val z) s)))"
 
-type_synonym ('v, 's) func = "('s rel \<times> ('v, 's) var)"
+type_synonym ('v, 'a) func = "('a rel \<times> ('v, 'a) var)"
 
-abbreviation fun_block :: "'s rel \<Rightarrow> ('v, 's) var \<Rightarrow> ('v, 's) func" where
+abbreviation fun_block :: "'a rel \<Rightarrow> ('v, 'a) var \<Rightarrow> ('v, 'a) func" where
   "fun_block R y \<equiv> (R, y)"
 
-abbreviation proc_block :: "('v, 's) func \<Rightarrow> 's rel" ("proc _" 100) where "proc_block \<equiv> fst"
-abbreviation ret_var :: "('v, 's) func \<Rightarrow> ('v, 's) var" ("ret _" 100) where "ret_var \<equiv> snd"
+abbreviation proc_block :: "('v, 'a) func \<Rightarrow> 'a rel" ("proc _" 100) where "proc_block \<equiv> fst"
+abbreviation ret_var :: "('v, 'a) func \<Rightarrow> ('v, 'a) var" ("ret _" 100) where "ret_var \<equiv> snd"
 
-definition fun_call :: "('v, 's) lval \<Rightarrow> ('v, 's) func \<Rightarrow> 's rel" where
+definition fun_call :: "('v, 'a) lval \<Rightarrow> ('v, 'a) func \<Rightarrow> 'a rel" where
   "fun_call u_upd F \<equiv> let y = ret F in 
       block (proc F) (\<lambda>s t. (upd y) (\<lambda>_. snd y s) (u_upd (\<lambda>_. snd y t) t))"
-  
+ *)
+
 text {* Annotated programs for automatic verification *}
 
-definition awhile :: "'s set \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition awhile :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "awhile i b x \<equiv> cwhile b x"
 
 (*
-definition afor :: "'s set  \<Rightarrow> ('v :: {order, plus, one}, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition afor :: "'a set  \<Rightarrow> ('v :: {order, plus, one}, 'a) var \<Rightarrow> ('v, 'a) rval \<Rightarrow> ('v, 'a) rval \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "afor i j n m x \<equiv> cfor j n m x"
 *)
 
-definition apre :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel" where
+definition apre :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
   "apre p x \<equiv> x"
 
-definition apost :: "'s rel \<Rightarrow> 's set\<Rightarrow> 's rel" where
+definition apost :: "'a rel \<Rightarrow> 'a set\<Rightarrow> 'a rel" where
   "apost x q \<equiv> x; apre q skip"
 
-definition aprog :: "'s set\<Rightarrow> 's rel \<Rightarrow> 's set\<Rightarrow> 's rel" where
+definition aprog :: "'a set\<Rightarrow> 'a rel \<Rightarrow> 'a set\<Rightarrow> 'a rel" where
   "aprog p x q \<equiv> x"
 
 

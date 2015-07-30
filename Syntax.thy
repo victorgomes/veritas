@@ -1,7 +1,7 @@
 section {* Syntax for the while-language *}
 
 theory Syntax
-  imports Hoare Array
+  imports VCG Array
 begin
 
 text {* 
@@ -26,8 +26,11 @@ text {*
 *}
                                                                                                 
 syntax
-  "_quote"      :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
-  "_antiquote"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [1000] 1000) 
+  "_quote_s_h"    :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
+  "_quote_s"      :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"
+  "_antiquote_s"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [1000] 1000) 
+  "_antiquote_h"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("@_" [1000] 1000) 
+  "_assert"       :: "('h \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s, 'h) state set" 
 
   "_subst"      :: "'s set \<Rightarrow> 'v \<Rightarrow> idt \<Rightarrow> 's set"          ("_[_'/`_]" [1000] 999)
   "_assign"     :: "idt \<Rightarrow> 'v \<Rightarrow> 's rel"                    ("(`_ :=/ _)" [0, 65] 62)
@@ -57,40 +60,79 @@ syntax
 
 
 ML {*
+
+  fun antiquote_tr name =
+    let
+      fun tr i ((t as Const (c, _)) $ u) =
+            if c = name then tr i u $ Bound i
+            else tr i t $ tr i u
+        | tr i (t $ u) = tr i t $ tr i u
+        | tr i (Abs (x, T, t)) = Abs (x, T, tr (i + 1) t)
+        | tr _ a = a;
+    in tr 0 end;
+  
+  fun quote_var_tr v name t = Abs (v, dummyT, antiquote_tr name (Term.incr_boundvars 1 t));
+(*
+  fun quote_tr name t = Abs ("s", dummyT, antiquote_tr name (Term.incr_boundvars 1 t));
+*)
+  fun quote_tr [t] = quote_var_tr "s" @{syntax_const "_antiquote_s"} 
+                     (quote_var_tr "h" @{syntax_const "_antiquote_h"} t)
+      | quote_tr ts = raise TERM ("quote_tr", ts)
+
+  fun quote_s_tr [t] = quote_var_tr "s" @{syntax_const "_antiquote_s"} t
+      | quote_s_tr ts = raise TERM ("quote_s_tr", ts)
+
+(*
   fun quote_tr [t] = Syntax_Trans.quote_tr @{syntax_const "_antiquote"} t
       | quote_tr ts = raise TERM ("quote_tr", ts)
+*)
 *}
 
 parse_translation {*
-  [(@{syntax_const "_quote"}, K quote_tr)]
+  [(@{syntax_const "_quote_s_h"}, K quote_tr),
+  (@{syntax_const "_quote_s"}, K quote_s_tr)]
 *}
+
+declare [[show_types]]
+lemma "\<guillemotleft>`x = a\<guillemotright> = b"
+oops
+(*
+abbreviation state_fun :: "('s \<Rightarrow> 'h \<Rightarrow> ('s \<times> 'h)) \<Rightarrow> ('s, 'h) state \<Rightarrow> ('s, 'h) state" where
+  "state_fun f \<sigma> \<equiv> (case \<sigma> of Some (s, h) \<Rightarrow> Some (f s h) | None \<Rightarrow> None)"
+*)
+
+abbreviation state_fun_bool :: "('s \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('s, 'h) state \<Rightarrow> bool" where
+  "state_fun_bool f \<sigma> \<equiv> (case \<sigma> of Some (s, h) \<Rightarrow> f s h | None \<Rightarrow> False)"
 
 translations
   "p [t/`u]"                == "_update_name u (\<lambda>_. t) \<in> p"
-  "`u := t"                 == "CONST assign (_update_name u) \<guillemotleft>t\<guillemotright>"
+  "`u := t"                 == "CONST assign (_update_name u) (_quote_s t)"
   "`a(i) := t"              => "CONST assign (_update_name a) \<guillemotleft>(CONST fun_upd (`a) i t)\<guillemotright>"
 
-  "if b then x else y fi"   => "CONST cond (CONST Collect \<guillemotleft>b\<guillemotright>) x y"
+  "_assert b"               => "CONST Collect (CONST state_fun_bool \<guillemotleft>b\<guillemotright>)"
+
+  "if b then x else y fi"   => "CONST cond (_assert b) x y"
   "if b then x fi"          == "if b then x else skip fi"
-  "while b do x od"         == "CONST cwhile (CONST Collect \<guillemotleft>b\<guillemotright>) x"
-  "while b inv i do x od"   == "CONST awhile (CONST Collect \<guillemotleft>i\<guillemotright>) (CONST Collect \<guillemotleft>b\<guillemotright>) x"
-
+  "while b do x od"         == "CONST cwhile (_assert b) x"
+  "while b inv i do x od"   == "CONST awhile (_assert i) (_assert b) x"
+(*
   "for `i := n to `m do x od"=> "CONST cfor (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> (CONST Pair (_update_name m) m) x"
-
-  "\<lbrace> p \<rbrace> x"                 == "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
-  "\<lbrace> u . p \<rbrace> x"             => "CONST apre (CONST Collect \<guillemotleft>p\<guillemotright>) x"
-
+*)
+  "\<lbrace> p \<rbrace> x"                 == "CONST apre (_assert p) x"
+  "\<lbrace> u . p \<rbrace> x"             => "CONST apre (_assert p) x"
+(*
   "begin x end"             => "x"
   "begin x return `z end"   => "CONST fun_block x (CONST Pair (_update_name z) z)"
   "local `u := t in x end"  => "CONST loc_block (CONST Pair (_update_name u) u) \<guillemotleft>t\<guillemotright> x"
   "`z := call R"            => "CONST fun_call (_update_name z) R"
-
+*)
   "(rec f in x end) z"      => "CONST lfp (%f z. x z)"
 
-  "\<turnstile> \<lbrace> p \<rbrace> x \<lbrace> q \<rbrace>"         => "CONST ht (CONST Collect \<guillemotleft>p\<guillemotright>) x (CONST Collect \<guillemotleft>q\<guillemotright>)"
-  "\<turnstile> \<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"     => "\<forall>u. CONST ht (CONST Collect \<guillemotleft>p\<guillemotright>) x (CONST Collect \<guillemotleft>q\<guillemotright>)"
-  
+  "\<turnstile> \<lbrace> p \<rbrace> x \<lbrace> q \<rbrace>"         => "CONST ht (_assert p) x (_assert q)"
+  "\<turnstile> \<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"     => "\<forall>u. CONST ht (_assert p) x (_assert q)"
 
+
+(*
 syntax ("" output)
   "_assert"    :: "'s \<Rightarrow> 's set"                             ("[_]" [0] 1000)
   "_seq"       :: "'s rel \<Rightarrow> 's rel \<Rightarrow> 'a rel"               ("_;// _" [59, 59] 60 )
@@ -130,7 +172,7 @@ ML {*
 
 print_translation {*
   [
-  (@{const_syntax Collect}, K assert_tr'),
+(*  (@{const_syntax Collect}, K assert_tr'), *)
   (@{const_syntax assign}, K assign_tr'),
   (@{const_syntax subst}, K subst_tr'),
 
@@ -139,15 +181,21 @@ print_translation {*
   (@{const_syntax awhile}, K (print_tr' @{syntax_const "_awhile"})),
 
   (@{const_syntax apre}, K (print_tr' @{syntax_const "_apre"})),
-
+(*
   (@{const_syntax loc_block}, K local_tr'),
   (@{const_syntax cfor}, K for_tr'),
   (@{const_syntax fun_call}, K call_tr'),
   (@{const_syntax fun_block}, K fun_tr'),
-
+*)
   (@{const_syntax ht}, K (print_tr' @{syntax_const "_ht"}))
   ]
 *}
+*)
+
+
+
+
+
 
 (*
 
