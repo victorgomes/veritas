@@ -361,6 +361,42 @@ lemma frame_rule: "Local F \<Longrightarrow> about_heap Q \<Longrightarrow> abou
   apply (simp add: about_heap_def Local_def)
   by (metis dual_order.trans mono_star)
 
+definition to_prog :: "('a, 'b) pred \<Rightarrow> ('a, 'b) state rel" where
+  "to_prog P \<equiv> {(<p>, <p>) | p. p \<in> P}"
+
+fun pred_bot_leq :: "('a, 'b) pred_bot \<Rightarrow> ('a, 'b) pred_bot \<Rightarrow> bool" (infix "\<sqsubseteq>" 50) where
+  "<P> \<sqsubseteq> <Q> \<longleftrightarrow> P \<subseteq> Q"
+| "\<bottom> \<sqsubseteq> Q \<longleftrightarrow> Q = \<bottom>"
+| "P \<sqsubseteq> \<bottom> \<longleftrightarrow> False"
+
+lemma "(\<forall>(s, h) \<in> P. \<langle>R\<rangle> s h \<sqsubseteq> <Q>) \<Longrightarrow> to_prog P O R \<le> R O to_prog Q"
+apply (clarsimp simp: to_prog_def)
+apply (rule relcompI)
+apply assumption
+apply clarsimp
+apply (erule_tac x="(aa, ba)" in ballE)
+apply (clarsimp simp: stran_def)
+apply (case_tac "(<aa, ba>, fault) \<in> R")
+apply clarsimp
+apply clarsimp
+apply (case_tac z)
+apply clarsimp
+apply clarsimp
+apply force
+by force
+
+lemma "to_prog P O R \<le> R O to_prog Q \<Longrightarrow> (\<forall>(s, h) \<in> P. \<langle>R\<rangle> s h \<sqsubseteq> <Q>)"
+apply auto
+apply (clarsimp simp: stran_def)
+apply (case_tac "(<a, b>, fault) \<notin> R")
+apply clarsimp
+apply (clarsimp simp: to_prog_def)
+apply force
+apply clarsimp
+apply (clarsimp simp: to_prog_def)
+apply force
+done
+
 end
 
 end

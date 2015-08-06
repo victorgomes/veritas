@@ -1,8 +1,14 @@
 section {* Syntax for the while-language *}
 
 theory Syntax
-  imports VCG Array
+  imports VCG Array Refinement
 begin
+
+no_notation comp_op ("n_" [90] 91)
+  and test_operator  ("t_" [100] 101)
+  and floor ("\<lfloor>_\<rfloor>")
+  and ceiling ("\<lceil>_\<rceil>")
+  and Set.image (infixr "`" 90)
 
 text {* 
   Programs are modelled as relations using a while programming language:
@@ -26,11 +32,9 @@ text {*
 *}
                                                                                                 
 syntax
-  "_quote_s_h"    :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
-  "_quote_s"      :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"
-  "_antiquote_s"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [1000] 1000) 
-  "_antiquote_h"  :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("@_" [1000] 1000) 
-  "_assert"       :: "('h \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s, 'h) state set" 
+  "_quote"        :: "'a \<Rightarrow> ('s \<Rightarrow> 'a)"                       ("(\<guillemotleft>_\<guillemotright>)" [0] 1000)
+  "_antiquote"    :: "('s \<Rightarrow> 'a) \<Rightarrow> 's"                       ("`_" [1000] 1000)
+  "_assert"       :: "('s \<Rightarrow> bool) \<Rightarrow> 's set" 
 
   "_subst"      :: "'s set \<Rightarrow> 'v \<Rightarrow> idt \<Rightarrow> 's set"          ("_[_'/`_]" [1000] 999)
   "_assign"     :: "idt \<Rightarrow> 'v \<Rightarrow> 's rel"                    ("(`_ :=/ _)" [0, 65] 62)
@@ -47,6 +51,8 @@ syntax
   "_apre"       :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's rel"               ("\<lbrace> _ \<rbrace>// _" [0, 62] 62)
   "_apre_aux"   :: "'v \<Rightarrow> ('v \<Rightarrow> 's set) \<Rightarrow> 's rel \<Rightarrow> 's rel" ("\<lbrace> _ . _ \<rbrace> _" [0, 0, 62] 62)
 
+  "_aprog_aux"  :: "'v \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's set \<Rightarrow> bool" ("\<lbrace> _ . _ \<rbrace>// _// \<lbrace> _ \<rbrace>" [0, 0, 62, 0] 62)
+
   "_proc"       :: "'s rel \<Rightarrow> 's rel"                        ("begin// _//end")
   "_fun"        :: "'s rel \<Rightarrow> 'a \<Rightarrow> ('s rel \<times> 'a)"           ("begin// _// return `_//end")
   "_local"      :: "idt \<Rightarrow> 'b \<Rightarrow> 'a rel \<Rightarrow> 'a rel"           ("(0local `_ := _ in// _//end)" [0, 65, 55] 62)
@@ -57,7 +63,7 @@ syntax
   "_ht"         :: "'s set \<Rightarrow> 's rel \<Rightarrow> 's set \<Rightarrow> bool"       ("\<turnstile> \<lbrace> _ \<rbrace>// _// \<lbrace> _ \<rbrace>" [0, 55, 0] 50)
   "_ht_aux"     :: "'v \<Rightarrow> 's set \<Rightarrow> 's rel \<Rightarrow> 's set \<Rightarrow> bool" ("\<turnstile> \<lbrace> _ . _ \<rbrace>// _// \<lbrace> _ \<rbrace>" [0, 55, 0] 50)
 
-
+  "_Spec"       :: "bool \<Rightarrow> bool \<Rightarrow> 'a"                       ("\<lbrakk>_,_\<rbrakk>" [10, 10] 100)
 
 ML {*
 
@@ -71,66 +77,48 @@ ML {*
         | tr _ a = a;
     in tr 0 end;
   
-  fun quote_var_tr v name t = Abs (v, dummyT, antiquote_tr name (Term.incr_boundvars 1 t));
-(*
-  fun quote_tr name t = Abs ("s", dummyT, antiquote_tr name (Term.incr_boundvars 1 t));
-*)
-  fun quote_tr [t] = quote_var_tr "s" @{syntax_const "_antiquote_s"} 
-                     (quote_var_tr "h" @{syntax_const "_antiquote_h"} t)
-      | quote_tr ts = raise TERM ("quote_tr", ts)
-
-  fun quote_s_tr [t] = quote_var_tr "s" @{syntax_const "_antiquote_s"} t
-      | quote_s_tr ts = raise TERM ("quote_s_tr", ts)
-
-(*
   fun quote_tr [t] = Syntax_Trans.quote_tr @{syntax_const "_antiquote"} t
       | quote_tr ts = raise TERM ("quote_tr", ts)
-*)
+
 *}
 
 parse_translation {*
-  [(@{syntax_const "_quote_s_h"}, K quote_tr),
-  (@{syntax_const "_quote_s"}, K quote_s_tr)]
+  [(@{syntax_const "_quote"}, K quote_tr)]
 *}
 
 
-(*
-abbreviation state_fun :: "('s \<Rightarrow> 'h \<Rightarrow> ('s \<times> 'h)) \<Rightarrow> ('s, 'h) state \<Rightarrow> ('s, 'h) state" where
-  "state_fun f \<sigma> \<equiv> (case \<sigma> of Some (s, h) \<Rightarrow> Some (f s h) | None \<Rightarrow> None)"
-*)
-
-abbreviation state_fun_bool :: "('s \<Rightarrow> 'h \<Rightarrow> bool) \<Rightarrow> ('s, 'h) state \<Rightarrow> bool" where
-  "state_fun_bool f \<sigma> \<equiv> (case \<sigma> of Some (s, h) \<Rightarrow> f s h | None \<Rightarrow> False)"
-
 translations
   "p [t/`u]"                == "_update_name u (\<lambda>_. t) \<in> p"
-  "`u := t"                 == "CONST assign (_update_name u) (_quote_s t)"
+  "`u := t"                 == "CONST assign (_update_name u) (_quote t)"
   "`a(i) := t"              => "CONST assign (_update_name a) \<guillemotleft>(CONST fun_upd (`a) i t)\<guillemotright>"
 
-  "_assert b"               => "CONST Collect (CONST state_fun_bool \<guillemotleft>b\<guillemotright>)"
+  "_assert b"               => "CONST Collect (\<guillemotleft>b\<guillemotright>)"
 
   "if b then x else y fi"   => "CONST cond (_assert b) x y"
   "if b then x fi"          == "if b then x else skip fi"
   "while b do x od"         == "CONST cwhile (_assert b) x"
   "while b inv i do x od"   == "CONST awhile (_assert i) (_assert b) x"
-(*
+
   "for `i := n to `m do x od"=> "CONST cfor (CONST Pair (_update_name i) i) \<guillemotleft>n\<guillemotright> (CONST Pair (_update_name m) m) x"
-*)
+
   "\<lbrace> p \<rbrace> x"                 == "CONST apre (_assert p) x"
-  "\<lbrace> u . p \<rbrace> x"             => "CONST apre (_assert p) x"
-(*
+  "\<lbrace> u . p \<rbrace> x"             => "CONST apre_aux (%u. _assert p) x"
+
+  "\<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"             => "CONST aprog_aux (%u. _assert p) x (%u. _assert q)"
+
   "begin x end"             => "x"
   "begin x return `z end"   => "CONST fun_block x (CONST Pair (_update_name z) z)"
   "local `u := t in x end"  => "CONST loc_block (CONST Pair (_update_name u) u) \<guillemotleft>t\<guillemotright> x"
   "`z := call R"            => "CONST fun_call (_update_name z) R"
-*)
-  "(rec f in x end) z"      => "CONST lfp (%f z. x z)"
+
+  "rec f in x end"          => "CONST lfp (%f. x)"
 
   "\<turnstile> \<lbrace> p \<rbrace> x \<lbrace> q \<rbrace>"         => "CONST ht (_assert p) x (_assert q)"
-  "\<turnstile> \<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"     => "\<forall>u. CONST ht (_assert p) x (_assert q)"
+  "\<turnstile> \<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"     => "CONST All (%u. CONST ht (_assert p) x (_assert q))"
+
+  "\<lbrakk>p, q\<rbrakk>"                   == "CONST Spec (CONST Collect \<guillemotleft>p\<guillemotright>) (CONST Collect \<guillemotleft>q\<guillemotright>)" 
 
 
-(*
 syntax ("" output)
   "_assert"    :: "'s \<Rightarrow> 's set"                             ("[_]" [0] 1000)
   "_seq"       :: "'s rel \<Rightarrow> 's rel \<Rightarrow> 'a rel"               ("_;// _" [59, 59] 60 )
@@ -188,56 +176,6 @@ print_translation {*
   (@{const_syntax ht}, K (print_tr' @{syntax_const "_ht"}))
   ]
 *}
-*)
 
-
-
-
-
-
-(*
-
-  "_local2"     :: "idt \<Rightarrow> 'a rel \<Rightarrow> 'a rel" ("local `_ in _ end" [0, 55] 62)
-  "_locals"     :: "idts \<Rightarrow> 's rel \<Rightarrow> 's rel" ("locals _ in _ end" [0, 55] 62)
-
-  "while b inv u. i do x od" => "CONST awhile (%u. CONST Collect \<guillemotleft>i\<guillemotright>) (CONST Collect \<guillemotleft>b\<guillemotright>) x"
-  "local `u in x end" => "CONST block (CONST id) x (\<guillemotleft>2 \<guillemotleft>`(_update_name u (\<lambda>_. `2 u))\<guillemotright> \<guillemotright>) (\<guillemotleft>2 \<guillemotleft> skip \<guillemotright>\<guillemotright>)"
-
-ML {*
-
-fun update_name_tr (Free (x, T) :: ts) = list_comb (Free (suffix "_update" x, T), ts)
-  | update_name_tr (Const (x, T) :: ts) = list_comb (Const (suffix "_update" x, T), ts)
-  | update_name_tr (((c as Const ("_constrain", _)) $ t $ ty) :: ts) =
-      if Term_Position.is_position ty then list_comb (c $ update_name_tr [t] $ ty, ts)
-      else
-        list_comb (c $ update_name_tr [t] $
-          (Lexicon.fun_type $
-            (Lexicon.fun_type $ Lexicon.dummy_type $ ty) $ Lexicon.dummy_type), ts)
-  | update_name_tr ts = raise TERM ("update_name_tr", ts);
-
-fun vars_tr (Const (@{syntax_const "_idts"}, _) $ idt $ vars) = idt :: vars_tr vars
-  | vars_tr t = [t];
-
-fun local_tr [v, x] = Syntax.const @{const_syntax "block"} $ (Syntax.const @{const_syntax "id"})
-                  $ x
-                  $ quote2_tr [quote_tr [Syntax.const @{syntax_const "_antiquote"} $ update_name_tr [v, absdummy dummyT (Syntax.const @{syntax_const "_antiquote2"} $ v)]]]
-                  $ quote2_tr [quote_tr [Syntax.const @{const_syntax "skip"}]]
- | local_tr ts = raise TERM ("local_tr", ts)
-
-fun locals_tr' [] x = x
-  | locals_tr' (v::vs) x = local_tr [v, locals_tr' vs x]
-
-fun locals_tr [vars, x] =
-    let val vs = vars_tr vars
-    in locals_tr' vs x
-    end
-    | locals_tr ts = raise TERM ("locals_tr", ts)
-*}
-
-parse_translation {*
-  [(@{syntax_const "_locals"}, K locals_tr)]
-*}
-
-*)
 
 end

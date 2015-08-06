@@ -8,7 +8,8 @@ text {* Simple while programming language based on relations *}
 
 text {* Relations below the identity form tests *}
 
-notation Id_on ("\<lfloor>_\<rfloor>" 100) 
+definition test :: "'a set \<Rightarrow> 'a option rel" ("\<lfloor>_\<rfloor>" 100)  where
+  "\<lfloor>P\<rfloor> \<equiv> {(Some p, Some p) | p. p \<in> P}"
 
 text {* Variables *}
 
@@ -56,8 +57,8 @@ abbreviation on_store :: "('s \<Rightarrow> 's) \<Rightarrow> ('s \<times> 'h) \
 abbreviation on_heap :: "('h \<Rightarrow> 'h) \<Rightarrow> ('s \<times> 'h) \<Rightarrow> ('s \<times> 'h)" where
   "on_heap f \<equiv> \<lambda>(s, h). (s, f h)"
 
-definition subst :: "('s, 'h) state set \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s, 'h) state set" where
-  "subst P u_upd t \<equiv> Collect (\<lambda>\<sigma>. (case \<sigma> of Some (s, h) \<Rightarrow> Some (u_upd (\<lambda>_. t s) s, h) | None \<Rightarrow> None) \<in> P)"
+definition subst :: "('s \<times> 'h) set \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s \<times> 'h) set" where
+  "subst P u_upd t \<equiv> Collect (\<lambda>(s, h). (u_upd (\<lambda>_. t s) s, h) \<in> P)"
 
 definition assign :: "('v, 's) lval \<Rightarrow> ('s \<Rightarrow>'v) \<Rightarrow> ('s, 'h) state rel" where
   "assign u_upd t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of Some (s, h) \<Rightarrow> Some (u_upd (\<lambda>_. t s) s, h) | None \<Rightarrow> None\<rangle>"
@@ -66,10 +67,10 @@ definition seq :: "'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel" (infixr ";"
   "seq \<equiv> relcomp"
 
 definition cond :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
-  "cond b x y \<equiv> (\<lfloor>b\<rfloor>;x) \<union> (\<lfloor>-b\<rfloor>;y)"
+  "cond b x y \<equiv> (Id_on b;x) \<union> (Id_on (-b);y)"
 
 definition cwhile :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
-  "cwhile b x \<equiv> (\<lfloor>b\<rfloor>;x)\<^sup>*; \<lfloor>-b\<rfloor>"
+  "cwhile b x \<equiv> ((Id_on b);x)\<^sup>*; (Id_on (-b))"
 
 (*
 definition cfor :: "('v :: {linorder, plus, one}, 'a) var \<Rightarrow> ('v, 'a) rval \<Rightarrow> ('v, 'a) var \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
@@ -82,8 +83,14 @@ definition dyn :: "('a \<Rightarrow> 'a rel) \<Rightarrow> 'a rel" ("\<lceil>_\<
 definition block :: "'a rel \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> 'a) \<Rightarrow> 'a rel" where
   "block x ret \<equiv> \<lceil>\<lambda>\<sigma>. x; \<langle>ret \<sigma>\<rangle>\<rceil>"
 
+definition loc_block :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s, 'h) state rel \<Rightarrow> ('s, 'h) state rel" where
+  "loc_block z t x \<equiv> (block (
+      \<langle>\<lambda>\<sigma>. case \<sigma> of None \<Rightarrow> None | Some (s, h) \<Rightarrow> Some ((upd z) (\<lambda>_. t s) s, h)\<rangle>; x) 
+      (\<lambda>\<sigma> \<sigma>'. case \<sigma> of None \<Rightarrow> None | Some (s, _) \<Rightarrow> 
+              (case \<sigma>' of None \<Rightarrow> None | Some (s', h') \<Rightarrow> Some ((upd z) (\<lambda>_. (val z) s) s', h'))))"
+
 (*
-definition loc_block :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
+definition loc_block :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> ('s, 'h) state rel" where
   "loc_block z t x \<equiv> (block (\<langle>\<lambda>s. (upd z) (\<lambda>_. t s) s\<rangle>; x) (\<lambda>s. (upd z) (\<lambda>_. (val z) s)))"
 
 type_synonym ('v, 'a) func = "('a rel \<times> ('v, 'a) var)"

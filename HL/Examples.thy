@@ -1,8 +1,6 @@
 theory Examples
-  imports "../Syntax"
+  imports Syntax
 begin
-
-lemma "\<turnstile> \<lbrace> True \<rbrace> x \<lbrace> True \<rbrace>" oops
 
 record state =
     x :: nat
@@ -15,8 +13,7 @@ lemma swap:
       `x := `y;
       `y := `z
    \<lbrace>`x = yo \<and> `y = xo\<rbrace>"
-by hoare auto
-(*
+   by hoare auto
 
 lemma "\<turnstile> \<lbrace> `x = n \<rbrace> 
   local `x := `x + 1 in
@@ -24,7 +21,7 @@ lemma "\<turnstile> \<lbrace> `x = n \<rbrace>
     `y := `x + 1
   end 
   \<lbrace> `x = n \<and> `y = 3 \<rbrace>"
-  by (hoare first: hl_split) auto
+  by hoare_split auto
 
 lemma "\<turnstile> \<lbrace> `x = u \<rbrace> local `x := t in R end \<lbrace> `x = u \<rbrace>"
   by hoare auto
@@ -50,7 +47,7 @@ lemma "\<turnstile> \<lbrace> `y = yo \<rbrace> `z := call (MAX \<guillemotleft>
   by (hoare simp: MAX_def) auto
 
 lemma "\<turnstile> \<lbrace> `y = yo \<rbrace> `z := call (MAX \<guillemotleft>xo\<guillemotright> \<guillemotleft>yo\<guillemotright>) \<lbrace> `y = yo \<and> `z \<ge> xo \<and> `z \<ge> yo \<rbrace>"
-  by (hoare simp: MAX_def first: hl_split) auto
+  by (hoare_split simp: MAX_def) auto
 
 lemma swap_annotated:
   "\<turnstile> \<lbrace>`x = xo \<and> `y = yo \<rbrace>
@@ -61,7 +58,7 @@ lemma swap_annotated:
       `y := `z
    \<lbrace>`x = yo \<and> `y = xo\<rbrace>"
   by (hoare hl: hl_apre_classic) auto
-*)
+
 record sum_state = 
   s :: nat
   i :: nat
@@ -73,7 +70,7 @@ lemma array_sum: "\<turnstile> \<lbrace> True \<rbrace>
         inv `s = array_sum a 1 (`i) \<and> `i \<le> N
         do
           `i := `i + 1;
-          `s := `s + a(`i)
+          `s := `s + a<`i>
         od
       \<lbrace> `s = array_sum a 1 N \<rbrace>"
     by hoare auto
@@ -97,7 +94,7 @@ lemma power:
     od
   \<lbrace> `b = a ^ `n \<rbrace>"
   by hoare auto
-(*
+
 lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
     `b := a;
     for `i := 1 to `n do
@@ -105,7 +102,7 @@ lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace>
     od  
     \<lbrace> `b = a ^ `n \<rbrace>"
     by hoare auto
-*)
+
 hide_const i b n
 
 record ls_state =
@@ -117,19 +114,17 @@ lemma linear_search:
   "\<turnstile> \<lbrace> True \<rbrace>
     `i := 1;
     while `i \<le> N
-    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m)
+    inv (\<forall>k. 1 \<le> k \<and> k < `i \<longrightarrow> a<k> \<noteq> m) \<or> (a<`j> = m)
     do
-      if a(`i) = m then
+      if a<`i> = m then
         `j := `i
       fi;
       `i := `i + 1
     od
-  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m) \<rbrace>" 
-  apply (hoare, auto) oops
-(*
-  using less_SucE by blas
-*)
-(*
+  \<lbrace> (\<forall>k. 1 \<le> k \<and> k \<le> N \<longrightarrow> a<k> \<noteq> m) \<or> (a<`j> = m) \<rbrace>" 
+  apply (hoare, auto)
+  using less_SucE by blast
+
 lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace> 
     `j := 1;
     for `i := 1 to `n do
@@ -140,7 +135,7 @@ lemma "\<turnstile> \<lbrace> `n \<ge> 1 \<rbrace>
   \<lbrace> (\<forall>k. 1 \<le> k \<and> k < `n \<longrightarrow> a(k) \<noteq> m) \<or> (a(`j) = m) \<rbrace>" 
   apply (hoare, auto)
   using less_SucE by blast
-*)
+
 hide_const i j n
 (*
 record 'a :: order bubble =
@@ -173,7 +168,6 @@ lemma bubble:
   \<lbrace> array_sorted (`a) 1 n \<rbrace>"
   apply hoare
 oops
-
 *)
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"
@@ -186,26 +180,25 @@ lemma fact: "\<turnstile> \<lbrace> True \<rbrace>
   inv `y = fact `x
   do
     `x := `x + 1;
-    `y := `y * `x
+    `y := `y \<cdot> `x
   od
   \<lbrace> `y = fact xo \<rbrace>"
   by hoare auto
 
-lemma fact_rec: "\<forall>xo. \<turnstile> \<lbrace> (xo = `x) \<rbrace>
-  lfp (\<lambda>Fact xo.
+lemma fact_rec: "\<forall>xo. \<turnstile> \<lbrace> xo = `x \<rbrace>
+  rec Fact in
     if `x = 0 then
       `y := 1
     else
       `x := `x - 1;
-      \<lbrace> xo = `x + 1 \<and> `x > 0 \<rbrace>
-      (Fact xo);
+      \<lbrace>xo. xo = `x + 1\<rbrace>
+      Fact;
       `x := `x + 1;
       `y := `y \<cdot> `x
     fi
-  ) xo
-  \<lbrace> xo = `x \<rbrace>"
-thm hl_rec[where P="\<lambda>z. {s. z = x s}" and Q="\<lambda>z. {s. z = x s}"]
-oops
+  end
+  \<lbrace> xo = `x \<and> `y = fact `x \<rbrace>"
+  by hoare auto
 
 lemma euclids:
   "\<turnstile> \<lbrace>`x = xo \<and> `y = yo\<rbrace> 
@@ -235,7 +228,7 @@ lemma div:
   \<lbrace> `x = `q * `y + `r \<and> `r \<ge> 0 \<and> `r < `y \<rbrace>"
   by hoare auto
 
-hide_const  x y z q r
+hide_const x y z q r
 
 lemma extend_euclid_invariant:
   assumes "(a' :: int)\<cdot>m + b'\<cdot>n = c" "a\<cdot>m + b\<cdot>n = d" "c = q\<cdot>d + r"
@@ -285,6 +278,7 @@ lemma extended_euclid: "\<turnstile> \<lbrace> True \<rbrace>
 
 hide_const a b a' b' c d r q t
 
+(*
 type_synonym 'a array = "(nat \<Rightarrow> 'a) \<times> nat"
 
 abbreviation array :: "'a array \<Rightarrow> nat \<Rightarrow> 'a" where "array \<equiv> fst"
@@ -359,5 +353,5 @@ apply simp
 apply force
 apply clarsimp
 apply auto
-
+*)
 end
