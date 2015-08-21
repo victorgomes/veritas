@@ -104,7 +104,7 @@ translations
   "\<lbrace> p \<rbrace> x"                 == "CONST apre (_assert p) x"
   "\<lbrace> u . p \<rbrace> x"             => "CONST apre_aux (%u. _assert p) x"
 
-  "\<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"             => "CONST aprog_aux (%u. _assert p) x (%u. _assert q)"
+  "\<lbrace> u . p \<rbrace> x \<lbrace> q \<rbrace>"        => "CONST aprog_aux (%u. _assert p) x (%u. _assert q)"
 
   "begin x end"             => "x"
   "begin x return `z end"   => "CONST fun_block x (CONST Pair (_update_name z) z)"

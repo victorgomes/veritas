@@ -33,10 +33,10 @@ lemma local_skip: "local \<langle>skip\<rangle>"
 
 lemma safe_skip: "safe skip"
   by (simp add: Local_local local_safe local_skip)
-
+(*
 lemma frame_skip: "frame skip"
   by (simp add: Local_local local_frame local_skip)
-
+*)
 definition lookup :: "(nat, 'a) lval \<Rightarrow> ('a \<Rightarrow> nat) \<Rightarrow> ('a, heap) state rel" where
   "lookup u_upd t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of <s, h> \<Rightarrow> if t s \<in> dom h then <u_upd (\<lambda>_. the (h (t s))) s, h> else fault | fault \<Rightarrow> fault\<rangle>"
 
@@ -51,10 +51,10 @@ lemma "frame (assign u_upd t)"
 
 lemma "safe (lookup u_upd t)"
   by (auto simp add: safe_def lookup_def graph_def substate_def)
-
+(*
 lemma "frame (lookup u_upd t)"
   by (auto simp add: frame_def lookup_def graph_def)
-
+*)
 lemma "safe (mutation u_upd t)"
   by (auto simp add: safe_def mutation_def graph_def substate_def)
 
@@ -65,9 +65,15 @@ lemma "frame (mutation u_upd t)"
 lemma "safe (assign u_upt t)"
   by (auto simp: assign_def safe_def graph_def)
 
-lemma "frame (assign u_upt t)"
+lemma frame_assign: "frame (assign u_upt t)"
   by (auto simp: assign_def frame_def graph_def)
 
+
+lemma "safe R \<Longrightarrow> frame R \<Longrightarrow> to_prog P O R \<le> R O to_prog Q \<Longrightarrow> to_prog (sep P X) O R \<le> R O to_prog (sep Q X)"
+  apply (auto simp: to_prog_def sep_def ortho_def safe_def frame_def)
+
+
+lemma "(\<forall>(s, h) \<in> P. \<langle>R\<rangle> s h \<sqsubseteq> <Q>) \<Longrightarrow> (\<forall>(s, h) \<in> (sep P X). \<langle>R\<rangle> s h \<sqsubseteq> <sep Q X>)"
 
 no_notation heap.stran ("\<langle>_\<rangle>")
 end

@@ -1,5 +1,5 @@
 theory Refinement
-  imports While "../../Algebra/RKAT_Models" "$ISABELLE_HOME/src/HOL/Eisbach/Eisbach"
+  imports While "../Algebra/RKAT_Models" "$ISABELLE_HOME/src/HOL/Eisbach/Eisbach"
 begin
 
 no_notation comp_op ("n_" [90] 91)

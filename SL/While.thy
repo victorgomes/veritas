@@ -8,7 +8,7 @@ text {* Simple while programming language based on relations *}
 
 text {* Relations below the identity form tests *}
 
-definition test :: "'a set \<Rightarrow> 'a option rel" ("\<lfloor>_\<rfloor>" 100)  where
+definition torel :: "'a set \<Rightarrow> 'a option rel" ("\<lfloor>_\<rfloor>" 100)  where
   "\<lfloor>P\<rfloor> \<equiv> {(Some p, Some p) | p. p \<in> P}"
 
 text {* Variables *}
@@ -33,20 +33,38 @@ type_synonym ('v, 's) rval = "'s \<Rightarrow> 'v"
 text {* A variable is then a pair of left and right values, satisfying some properties. *}
 type_synonym ('v, 's) var = "('v, 's) lval \<times> ('v, 's) rval"
 
-abbreviation upd_var :: "('v, 'a) var \<Rightarrow> ('v, 'a) lval" ("upd _" 100) where "upd_var \<equiv> fst"
-abbreviation val_var :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval" ("val _" 100) where "val_var \<equiv> snd"
+abbreviation set :: "('v, 'a) var \<Rightarrow> ('v, 'a) lval"  where "set \<equiv> fst"
+abbreviation val :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval"  where "val \<equiv> snd"
 
-definition consistent_var :: "('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> bool" where
-  "consistent_var u_upd u \<equiv> \<forall>s. u_upd (\<lambda>_. u s) s = s"
+(* Variables healthy conditions *)
 
-definition consistent_var2 :: "('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> bool" where
-  "consistent_var2 u_upd u \<equiv> \<forall>t. consistent_var u_upd t \<longrightarrow> u = t"
+(* Setting a variable to a value and accessing this variable should yield the same value *)
+definition hvar1 :: "('v, 'a) var \<Rightarrow> bool" where
+  "hvar1 x \<equiv> \<forall>t s. val x (set x (\<lambda>_. t) s) = t"
+
+(* Setting a variable twice in succession, then only the last value is stored *)
+definition hvar2 :: "('v, 'a) var \<Rightarrow> bool" where
+  "hvar2 x \<equiv> \<forall>t1 t2 s. set x (\<lambda>_. t2) (set x (\<lambda>_. t1) s) = set x (\<lambda>_. t2) s"
+
+(* Seting a variable to a vlue it already has does not change the state *)
+definition hvar3 :: "('v, 'a) var \<Rightarrow> bool" where
+  "hvar3 x \<equiv> \<forall>s. set x (\<lambda>_. val x s) s = s"
+
+(* Variables can set independently of each other *)
+definition hvar4 :: "('v, 'a) var \<Rightarrow> ('v, 'a) var \<Rightarrow> bool" where
+  "hvar4 x y \<equiv> \<forall>s t. x \<noteq> y \<longrightarrow> val y (set x (\<lambda>_. t) s) = val y s"
+
+(* Setting variables is a commutative operation *)
+definition hvar5 :: "('v, 'a) var \<Rightarrow> ('v, 'a) var \<Rightarrow> bool" where
+  "hvar5 x y \<equiv> \<forall>s t1 t2. set x (\<lambda>_. t1) (set y (\<lambda>_. t2) s) = set y (\<lambda>_. t2) (set x (\<lambda>_. t1) s)"
 
 text {* Commands *}
 
 definition abort :: "'a rel" ("abort") where "abort \<equiv> {}"
 
 definition skip :: "'a rel" ("skip") where "skip \<equiv> Id" 
+
+definition fault :: "'a option rel" where "fault \<equiv> SOME R. \<exists>\<sigma>. (\<sigma>, None) \<in> R"
 
 definition graph :: "('a \<Rightarrow> 'a) \<Rightarrow> 'a rel" ("\<langle>_\<rangle>" 100) where
   "\<langle>f\<rangle> \<equiv> {(\<sigma>, f \<sigma>) | \<sigma>. True}"
@@ -57,20 +75,20 @@ abbreviation on_store :: "('s \<Rightarrow> 's) \<Rightarrow> ('s \<times> 'h) \
 abbreviation on_heap :: "('h \<Rightarrow> 'h) \<Rightarrow> ('s \<times> 'h) \<Rightarrow> ('s \<times> 'h)" where
   "on_heap f \<equiv> \<lambda>(s, h). (s, f h)"
 
-definition subst :: "('s \<times> 'h) set \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s \<times> 'h) set" where
-  "subst P u_upd t \<equiv> Collect (\<lambda>(s, h). (u_upd (\<lambda>_. t s) s, h) \<in> P)"
+definition subst :: "('s \<times> 'h) set \<Rightarrow> ('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s \<times> 'h) set" where
+  "subst P u t \<equiv> Collect (\<lambda>(s, h). (set u (\<lambda>_. t s) s, h) \<in> P)"
 
-definition assign :: "('v, 's) lval \<Rightarrow> ('s \<Rightarrow>'v) \<Rightarrow> ('s, 'h) state rel" where
-  "assign u_upd t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of Some (s, h) \<Rightarrow> Some (u_upd (\<lambda>_. t s) s, h) | None \<Rightarrow> None\<rangle>"
+definition assign :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s, 'h) state rel" where
+  "assign u t \<equiv> \<langle>\<lambda>\<sigma>. case \<sigma> of Some (s, h) \<Rightarrow> Some (set u (\<lambda>_. t s) s, h) | None \<Rightarrow> None\<rangle>"
 
 definition seq :: "'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel" (infixr ";" 60) where
   "seq \<equiv> relcomp"
 
-definition cond :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
-  "cond b x y \<equiv> (Id_on b;x) \<union> (Id_on (-b);y)"
+definition cond :: "'a set \<Rightarrow> 'a option rel \<Rightarrow> 'a option rel \<Rightarrow> 'a option rel" where
+  "cond b x y \<equiv> (\<lfloor>b\<rfloor>;x) \<union> (\<lfloor>-b\<rfloor>;y)"
 
-definition cwhile :: "'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
-  "cwhile b x \<equiv> ((Id_on b);x)\<^sup>*; (Id_on (-b))"
+definition cwhile :: "'a set \<Rightarrow> 'a option rel \<Rightarrow> 'a option rel" where
+  "cwhile b x \<equiv> ((\<lfloor>b\<rfloor>;x)\<^sup>*; \<lfloor>-b\<rfloor>)"
 
 (*
 definition cfor :: "('v :: {linorder, plus, one}, 'a) var \<Rightarrow> ('v, 'a) rval \<Rightarrow> ('v, 'a) var \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
@@ -83,13 +101,14 @@ definition dyn :: "('a \<Rightarrow> 'a rel) \<Rightarrow> 'a rel" ("\<lceil>_\<
 definition block :: "'a rel \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> 'a) \<Rightarrow> 'a rel" where
   "block x ret \<equiv> \<lceil>\<lambda>\<sigma>. x; \<langle>ret \<sigma>\<rangle>\<rceil>"
 
+(*
 definition loc_block :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> ('s, 'h) state rel \<Rightarrow> ('s, 'h) state rel" where
   "loc_block z t x \<equiv> (block (
       \<langle>\<lambda>\<sigma>. case \<sigma> of None \<Rightarrow> None | Some (s, h) \<Rightarrow> Some ((upd z) (\<lambda>_. t s) s, h)\<rangle>; x) 
       (\<lambda>\<sigma> \<sigma>'. case \<sigma> of None \<Rightarrow> None | Some (s, _) \<Rightarrow> 
               (case \<sigma>' of None \<Rightarrow> None | Some (s', h') \<Rightarrow> Some ((upd z) (\<lambda>_. (val z) s) s', h'))))"
 
-(*
+
 definition loc_block :: "('v, 's) var \<Rightarrow> ('v, 's) rval \<Rightarrow> 's rel \<Rightarrow> ('s, 'h) state rel" where
   "loc_block z t x \<equiv> (block (\<langle>\<lambda>s. (upd z) (\<lambda>_. t s) s\<rangle>; x) (\<lambda>s. (upd z) (\<lambda>_. (val z) s)))"
 
@@ -108,7 +127,7 @@ definition fun_call :: "('v, 'a) lval \<Rightarrow> ('v, 'a) func \<Rightarrow> 
 
 text {* Annotated programs for automatic verification *}
 
-definition awhile :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a rel \<Rightarrow> 'a rel" where
+definition awhile :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a option rel \<Rightarrow> 'a option rel" where
   "awhile i b x \<equiv> cwhile b x"
 
 (*

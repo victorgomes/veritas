@@ -1,5 +1,5 @@
 theory Locality
-  imports "Algebra/PartialMonoid"
+  imports "../Algebra/PartialMonoid"
 begin
 
 text {*
@@ -89,12 +89,84 @@ definition safe :: "('a, 'b) state rel \<Rightarrow> bool" where
   "safe R \<equiv> \<forall>s h h'. (<s, h>, fault) \<notin> R \<and> h \<preceq> h' \<longrightarrow> (<s, h'>, fault) \<notin> R"
 
 definition frame :: "('a, 'b) state rel \<Rightarrow> bool" where
-  "frame R \<equiv> \<forall>so ho h dh s' h'. 
-              (<so, ho>, fault) \<notin> R \<and>
+  "frame R \<equiv> \<forall>s ho h dh s' h'. 
+              (<s, ho>, fault) \<notin> R \<and>
               ho ## dh \<and> 
               h = ho \<bullet> dh \<and>                    
-              (<so, h>, <s', h'>) \<in> R
-              \<longrightarrow> (\<exists>so' ho'. ho' ## dh \<and> h' = ho' \<bullet> dh \<and> (<so, ho>, <so', ho'>) \<in> R)" 
+              (<s, h>, <s', h'>) \<in> R
+              \<longrightarrow> (\<exists>ho'. ho' ## dh \<and> h' = ho' \<bullet> dh \<and> (<s, ho>, <s', ho'>) \<in> R)" 
+
+lemma "frame R \<longleftrightarrow> (\<forall>s ho h1 h' s'. (<s, ho>, fault) \<notin> R \<and> ho ## h1 \<and> (<s, ho \<bullet> h1>, <s', h'>) \<in> R \<longrightarrow> (\<exists>ho'. ho' ## h1 \<and> (<s, ho>, <s', ho'>) \<in> R \<and> h' = ho' \<bullet> h1))"
+  apply (auto simp: frame_def)
+apply force+
+done
+
+lemma safe_var: "safe R \<longleftrightarrow> (\<forall>s h h'. (<s, h'>, fault) \<in> R \<longrightarrow> h \<preceq> h' \<longrightarrow> (<s, h>, fault) \<in> R)" 
+  by (auto simp: safe_def)
+
+lemma safe2: "safe R \<longleftrightarrow> (\<forall>s h h'. (<s, h>, fault) \<notin> R \<and> h ## h' \<longrightarrow> (<s, h \<bullet> h'>, fault) \<notin> R)" 
+  by (auto simp: safe_var substate_def)
+
+lemma "\<forall>R \<in> PR. safe R \<Longrightarrow> safe (\<Union>PR)"
+  by (auto simp: safe_def)
+
+lemma "\<forall>R \<in> PR. frame R \<Longrightarrow> frame (\<Union>PR)"
+  by (clarsimp simp: frame_def) meson
+
+lemma "safe R \<Longrightarrow> safe S \<Longrightarrow> safe (R \<union> S)"
+  by (auto simp: safe_def)
+
+lemma "safe R \<Longrightarrow> safe S \<Longrightarrow> safe (R \<inter> S)"
+  by (auto simp: safe_def)
+
+lemma "safe R \<Longrightarrow> safe (R\<^sup>*)"
+  apply (auto simp: safe_def)
+  (* nitpick *) oops
+
+lemma "frame R \<Longrightarrow> frame S \<Longrightarrow> frame (R \<union> S)"
+  apply (auto simp: frame_def)
+  apply blast+
+done
+
+lemma "frame R \<Longrightarrow> frame S \<Longrightarrow> frame (R \<inter> S)"
+  apply (auto simp: frame_def)
+  (* nitpick *) oops
+
+lemma "frame R \<Longrightarrow> frame (R\<^sup>*)"
+  apply (auto simp: frame_def)
+  (* nitpick *) oops
+
+lemma "safe R \<Longrightarrow> frame R \<Longrightarrow> safe (R\<^sup>*)"
+  apply (auto simp: safe_def frame_def substate_def)
+  (* nitpick *) oops
+
+definition from_test :: "('a \<times> 'b) set \<Rightarrow> ('a, 'b) state rel" where
+  "from_test P \<equiv> {(<s, h>, <s, h>) | s h. (s, h) \<in> P}" 
+
+definition precise' :: "'b set \<Rightarrow> bool" where
+  "precise' P \<equiv> \<forall>h. \<exists>h'. h' \<preceq> h \<longrightarrow> h' \<in> P"
+
+lemma "precise' {h}"
+  apply (auto simp: precise'_def substate_def)
+done
+
+definition precise :: "('a \<times> 'b) set \<Rightarrow> bool" where
+  "precise P \<equiv> \<forall>(s :: 'a) h. \<exists>h'. h' \<preceq> h \<longrightarrow> h' \<in> (snd ` P)"
+
+lemma "precise {(s, h)}"
+  by (auto simp: precise_def)
+  
+
+
+lemma "safe (from_test P)"
+  by (auto simp: safe_var from_test_def) 
+
+lemma "precise P \<Longrightarrow> frame (from_test P)"
+  apply (auto simp: frame_def from_test_def precise_def substate_def)
+  apply (erule_tac x=so in allE)
+  apply auto
+oops
+  
 
 (*********************************************************************************************)
 
@@ -160,8 +232,10 @@ lemma stran3: "(\<langle>R\<rangle> s h)\<downharpoonright>\<^sup>h\<^sub>\<bott
 
 text {* Locality -- State Transformer *}
 
+
 definition local :: "('a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) pred_bot) \<Rightarrow> bool" where
   "local f \<equiv> \<forall>s h h'. h ## h' \<longrightarrow> (f s (h \<bullet> h'))\<downharpoonright>\<^sup>h\<^sub>\<bottom> \<subseteq>\<^sup>h\<^sub>\<bottom> (f s h)\<downharpoonright>\<^sup>h\<^sub>\<bottom> *\<^sup>h\<^sub>\<bottom> <{h'}>"
+
 
 theorem sf_local: "safe R \<Longrightarrow> frame R \<Longrightarrow> local \<langle>R\<rangle>"
   apply (clarsimp simp: local_def)
@@ -175,7 +249,6 @@ theorem sf_local: "safe R \<Longrightarrow> frame R \<Longrightarrow> local \<la
       apply (clarsimp simp: safeD2_hproj)
     -- Some
       apply (clarsimp simp: frame_def)
-      
       apply (meson stran2 stran3 non_faultD_hproj) 
 done
 
@@ -198,13 +271,14 @@ lemma local_frame2: "(<s, h>, \<sigma>') \<in> R \<Longrightarrow> (\<langle>R\<
 
 theorem local_frame: "local \<langle>R\<rangle> \<Longrightarrow> frame R"
   apply (clarsimp simp: frame_def local_def)
+(* nitpick
   apply (erule_tac x=so in allE)
   apply (erule_tac x=ho in allE)
   apply (erule_tac x=dh in allE)
   apply clarsimp
   apply (case_tac "(\<langle>R\<rangle> so (ho \<bullet> dh))\<downharpoonright>\<^sup>h\<^sub>\<bottom>")
   -- None 
-    using fault_eq apply fastforce
+    using fault_eq apply fastforc
   -- Some 
     apply clarsimp
     apply (case_tac "(\<langle>R\<rangle> so ho)\<downharpoonright>\<^sup>h\<^sub>\<bottom> *\<^sup>h\<^sub>\<bottom> <{dh}>")
@@ -220,7 +294,8 @@ theorem local_frame: "local \<langle>R\<rangle> \<Longrightarrow> frame R"
         apply (subgoal_tac "h' \<in> a")
         apply blast
         apply (simp add: stran3)
-done
+done *)
+oops
 
 text {* Predicate (Assertion) Level *}
 
@@ -240,6 +315,7 @@ definition up_proj :: "('a, 'b) pred \<Rightarrow> ('a, 'b) pred" ("_\<up>" [100
 
 definition Local :: "(('a \<times> 'b) set \<Rightarrow> ('a \<times> 'b) set) \<Rightarrow> bool" where
   "Local F \<equiv> \<forall>P Q. (F P) * Q \<le> F (P\<up> * Q\<up>)"
+
 
 lemma ptranD: "(s, h) \<in> \<lbrakk>\<langle>R\<rangle>\<rbrakk> Q  \<Longrightarrow> (<s, h>, <s', h'>) \<in> R \<Longrightarrow> (s', h') \<in> Q"
   apply (clarsimp simp: ptran_def stran_def)
@@ -368,6 +444,92 @@ fun pred_bot_leq :: "('a, 'b) pred_bot \<Rightarrow> ('a, 'b) pred_bot \<Rightar
   "<P> \<sqsubseteq> <Q> \<longleftrightarrow> P \<subseteq> Q"
 | "\<bottom> \<sqsubseteq> Q \<longleftrightarrow> Q = \<bottom>"
 | "P \<sqsubseteq> \<bottom> \<longleftrightarrow> False"
+
+fun sepbot_set :: "('a, 'b) pred_bot \<Rightarrow> ('a, 'b) pred_bot \<Rightarrow> ('a, 'b) pred_bot" (infixl "*\<^sub>\<bottom>" 75) where
+  "<P> *\<^sub>\<bottom> <Q> = <P * Q>"
+| "p *\<^sub>\<bottom> \<bottom> = \<bottom>"
+| "\<bottom> *\<^sub>\<bottom> q = \<bottom>"
+
+definition local2 :: "('a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) pred_bot) \<Rightarrow> bool" where
+  "local2 f \<equiv> \<forall>s h h'. h ## h' \<longrightarrow> (f s (h \<bullet> h')) \<sqsubseteq> (f s h) *\<^sub>\<bottom> <\<top>\<times>{h'}>"
+
+lemma "local2 f \<Longrightarrow> local f"
+  apply (auto simp: local_def local2_def)
+  apply (erule_tac x=s in allE)
+  apply (erule_tac x=h in allE)
+  apply (erule_tac x=h' in allE)
+  apply clarsimp
+  apply (case_tac "(f s (h \<bullet> h'))\<downharpoonright>\<^sup>h\<^sub>\<bottom>")
+  apply clarsimp
+  apply (metis hproj_some option.distinct(1) option.exhaust pred_bot_leq.elims(2) sepbot_set.simps(1))
+  apply clarsimp
+  apply (case_tac "(f s h)\<downharpoonright>\<^sup>h\<^sub>\<bottom> *\<^sup>h\<^sub>\<bottom> <{h'}>")
+  apply clarsimp
+  apply clarsimp
+  apply (case_tac "(f s (h \<bullet> h'))")
+  apply clarsimp
+  apply (case_tac "f s h *\<^sub>\<bottom> <\<top> \<times> {h'}>")
+  apply clarsimp
+  apply clarsimp
+  apply (case_tac "(f s h)")
+  apply clarsimp
+  apply clarsimp
+  apply (clarsimp simp: sep_def)
+  apply force
+done
+
+lemma "local2 \<langle>R\<rangle> \<Longrightarrow> frame R"
+  apply (clarsimp simp: frame_def local2_def)
+  apply (erule_tac x=s in allE)
+  apply (erule_tac x=ho in allE)
+  apply (erule_tac x=dh in allE)
+  apply clarsimp
+  apply (case_tac "(\<langle>R\<rangle> s (ho \<bullet> dh))")
+  -- None 
+    using fault_eq apply fastforce
+  -- Some 
+    apply clarsimp
+    apply (case_tac "\<langle>R\<rangle> s ho *\<^sub>\<bottom> <\<top> \<times> {dh}>")
+    -- None
+      apply (simp add: stran_def)
+    -- Some
+      apply clarsimp
+      apply (case_tac "(\<langle>R\<rangle> s ho)")
+      -- None
+        apply clarsimp
+      -- Some
+        apply (clarsimp simp add: sep_def)
+by (smt Pair_inject mem_Collect_eq old.prod.case option.inject ptranD stran_def stran_ptran_eq2)
+
+lemma "local2 f \<Longrightarrow> \<forall>P Q. (\<lbrakk>f\<rbrakk> P) * Q \<le> \<lbrakk>f\<rbrakk> (P * Q\<up>)"
+  apply (clarsimp simp: )
+  apply (case_tac "f a b")
+  -- None
+    apply (clarsimp simp add: up_proj_def sep_def ptran_def)
+      apply (case_tac "f a h")
+      apply clarsimp
+      apply clarsimp
+      apply (metis local2_def option.distinct(1) pred_bot_leq.elims(2) sepbot_set.simps(1))
+  -- Some
+    apply (rename_tac P')
+    apply (subst stran_ptran_eq2[symmetric])
+    apply assumption
+    apply (default, case_tac x, clarsimp)
+    apply (clarsimp simp: local2_def)
+    apply (rename_tac s h F s' h')
+    apply (clarsimp simp: ptran_def sep_def)
+      apply (case_tac "f s ha")
+      apply clarsimp
+      apply clarsimp
+      apply (erule_tac x=s in allE)
+      apply (erule_tac x=ha in allE)
+      apply (erule_tac x=h'a in allE)
+      apply (clarsimp simp: sep_def up_proj_def)
+by fastforce
+      
+lemma "local2 f \<Longrightarrow> \<forall>P Q. (\<lbrakk>f\<rbrakk> P) * Q \<le> \<lbrakk>f\<rbrakk> (P * Q)"
+nitpick oops
+
 
 lemma "(\<forall>(s, h) \<in> P. \<langle>R\<rangle> s h \<sqsubseteq> <Q>) \<Longrightarrow> to_prog P O R \<le> R O to_prog Q"
 apply (clarsimp simp: to_prog_def)

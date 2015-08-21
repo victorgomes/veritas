@@ -29,8 +29,8 @@ type_synonym ('v, 's) rval = "'s \<Rightarrow> 'v"
 text {* A variable is then a pair of left and right values, satisfying some properties. *}
 type_synonym ('v, 's) var = "('v, 's) lval \<times> ('v, 's) rval"
 
-abbreviation upd_var :: "('v, 'a) var \<Rightarrow> ('v, 'a) lval" ("upd _" 100) where "upd_var \<equiv> fst"
-abbreviation val_var :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval" ("val _" 100) where "val_var \<equiv> snd"
+abbreviation upd :: "('v, 'a) var \<Rightarrow> ('v, 'a) lval" where "upd \<equiv> fst"
+abbreviation val :: "('v, 'a) var \<Rightarrow> ('v, 'a) rval" where "val \<equiv> snd"
 
 text {* Commands *}
 
