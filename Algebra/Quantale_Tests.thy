@@ -8,13 +8,10 @@ begin
 
 lemma test_meet: "test p \<Longrightarrow> test q \<Longrightarrow> p \<sqinter> q = p \<cdot> q"
   apply (auto simp: test_restrictl test_restrictr intro!: antisym)
-  by (metis inf.boundedE test_meet_closure mult_inf_subdistr test_leq_mult_def_var test_mult_idem_var)
+  by (metis (no_types, lifting) local.inf.cobounded1 local.inf.cobounded2 local.test_leq_mult_def_var local.test_meet_closure local.test_mult_closed mult_assoc)
 
 definition guards :: "('a \<times> 'a) set \<Rightarrow> 'a" where
   "guards GC \<equiv> \<Squnion>{b. \<exists>x. (b, x) \<in> GC \<and> test b}"
-
-lemma test_guards: "test (guards GC)"
-  sorry
   
 definition comm :: "('a \<times> 'a) set \<Rightarrow> 'a" where
   "comm GC \<equiv> \<Squnion>{b \<cdot> x | b x. (b, x) \<in> GC \<and> test b}"
@@ -39,7 +36,7 @@ proof (auto simp: select_def)
   hence a: "\<forall>b x. (b, x) \<in> GC \<and> test b \<longrightarrow> p \<cdot> (b \<cdot> x) \<le> b \<cdot> x \<cdot> q"
     by (auto simp: test_export_eq mult_assoc[symmetric])
   have "p \<cdot> (comm GC) = \<Squnion>{p \<cdot> (b \<cdot> x) |b x. (b, x) \<in> GC \<and> test b}"
-    by (auto simp: comm_def Sup_mult_distl') (metis (no_types, lifting))
+    by (auto simp: comm_def qSUP_distl2')
   also have "... \<le> \<Squnion>{b \<cdot> x \<cdot> q |b x. (b, x) \<in> GC \<and> test b}"
     apply (rule Sup_least)
     apply auto
@@ -48,13 +45,9 @@ proof (auto simp: select_def)
     using a apply auto
   done
   also have "... = comm GC \<cdot> q"
-    by (auto simp: comm_def Sup_mult_distr') (metis (no_types, lifting))
+    by (auto simp: comm_def qSup_distr') (metis (no_types, lifting))
   finally show "p \<cdot> comm GC \<le> comm GC \<cdot> q" .
 qed
-(*
-definition repeat :: "('a \<times> 'a) set \<Rightarrow> 'a" where
-  "repeat GC \<equiv> iteration (comm GC)"
-*)
 
 end
 

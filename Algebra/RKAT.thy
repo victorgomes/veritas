@@ -73,7 +73,7 @@ lemma choice_ref [intro]: "test p \<Longrightarrow> test q \<Longrightarrow> spe
   by (simp add: local.add_lub ref_order_def)
 
 lemma test_expl_ref: "test b \<Longrightarrow> test p \<Longrightarrow> test q \<Longrightarrow> spec p q \<sqsubseteq>  b \<cdot> (spec (p\<cdot>b) q)"
-  sorry
+  by (metis local.test_eq3 local.test_mult_closed mult_assoc specI spec_char)
 
 lemma test_expr_ref: "test b \<Longrightarrow> test p \<Longrightarrow> test q \<Longrightarrow> spec p (q\<cdot>b) \<sqsubseteq> (spec p q) \<cdot> b"
 oops

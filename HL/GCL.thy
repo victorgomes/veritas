@@ -1,5 +1,5 @@
 theory GCL
-  imports VCG "../AFP/Quantales/Quantale_Tests"
+  imports VCG
 begin
 
 (* Semantics *)

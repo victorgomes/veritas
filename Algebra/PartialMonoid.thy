@@ -158,8 +158,23 @@ end
 
 section {* Models of partial monoids *}
 
+text {*
+  Binary Pairs
+*}
+
+typedef 'a pair = "UNIV :: ('a \<times> 'a) set" ..
+setup_lifting type_definition_pair
+
+instantiation pair :: (type) partial_semigroup
+begin
+lift_definition pmult_pair :: "'a pair \<Rightarrow> 'a pair \<Rightarrow> 'a pair" is "\<lambda>(a, b) (c, d). (a, d)" .
+lift_definition pmult_defined_pair :: "'a pair \<Rightarrow> 'a pair \<Rightarrow> bool" is "\<lambda>(a, b) (c, d). b = c" .
+instance 
+  by default (transfer, fastforce)+
+end
+
 text {* 
-  The natural model of a partial monoid is partial functions. 
+  Partial functions. 
 *}
 
 typedef ('a, 'b) pfun = "UNIV :: ('a \<Rightarrow> 'b option) set" ..
@@ -208,14 +223,14 @@ lift_definition pmult_defined_pfun_bot :: "('a, 'b) pfun_bot \<Rightarrow> ('a, 
 instance
   by default (transfer, auto)+
 end
+ 
 
 text {*
   We could instantiate the heap as a partial function from nat to nat
 *}
-(*type_synonym heap = "(nat, nat) pfun"*)
+
 
 notation one_class.one ("1")
-
 no_notation bot ("\<bottom>")
 
 
