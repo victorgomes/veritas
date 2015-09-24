@@ -77,7 +77,7 @@ lemma hl_simple_alt: "ht p y q \<Longrightarrow> ht p x q \<Longrightarrow> ht p
 lemma hl_alt_base [hl_rules]: "ht (p \<inter> b) x q \<Longrightarrow> ht p (alt [(b, x)]) q"
   by (auto simp: ht_def seq_def alt_def)
 
-lemma hl_alt_induct [hl_rules]: "ht (p \<inter> b) x q \<Longrightarrow> ht p (alt xs) q \<Longrightarrow> ht p (alt ((b, x) # xs)) q"
+lemma hl_alt_induct [hl_rules]: "ht p (alt xs) q \<Longrightarrow> ht (p \<inter> b) x q \<Longrightarrow> ht p (alt ((b, x) # xs)) q"
   by (auto simp: ht_def seq_def alt_def) force+
 
 definition arepeat :: "'a set \<Rightarrow> ('a set \<times> 'a rel) list \<Rightarrow> 'a rel" where
@@ -106,18 +106,21 @@ datatype 'a lprog = Atomic nat "'a rel"
   | Seq "'a lprog" "'a lprog"
   | If nat "'a set" "'a lprog" "'a lprog"
   | Loop nat "'a set" "'a lprog"
+  | Await nat "'a set" "'a rel"
 
 primrec first :: "'a lprog \<Rightarrow> nat" where
   "first (Atomic k a) = k"
 | "first (Seq x y) = first x"
 | "first (If k b x y) = k"
 | "first (Loop k b x) = k"
+| "first (Await k b a) = k"
 
 primrec last :: "'a lprog \<Rightarrow> nat" where
   "last (Atomic k a) = k"
 | "last (Seq x y) = last y"
 | "last (If k b x y) = last y"
 | "last (Loop k b x) = last x"
+| "last (Await k b a) = k"
 
 primrec T :: "'a lprog \<Rightarrow> nat \<Rightarrow> (nat, 'a) var \<Rightarrow> ('a set \<times> 'a rel) list" where
   "T (Atomic k R) c pc = [({s. val pc s = k}, R; assign (upd pc) (\<lambda>_. c))]"
@@ -128,7 +131,18 @@ primrec T :: "'a lprog \<Rightarrow> nat \<Rightarrow> (nat, 'a) var \<Rightarro
 | "T (Loop k b x) c pc = ({s. val pc s = k} \<inter> b, assign (upd pc) (\<lambda>_. first x))
     # ({s. val pc s = k} - b, assign (upd pc) (\<lambda>_. c))
     # T x k pc"
+| "T (Await k b R) c pc = [({s. val pc s = k} \<inter> b, R; assign (upd pc) (\<lambda>_. c))]"
 
+
+primrec pc_set :: "nat \<Rightarrow> nat set" where
+  "pc_set 0 = {0}"
+| "pc_set (Suc m) = {Suc m} \<union> pc_set m"
+
+declare Num.numeral_2_eq_2 [simp]
+  Num.numeral_3_eq_3 [simp]
+
+lemma [simp]: "4 = Suc (Suc (Suc (Suc 0)))"
+   by arith
 
 record pc_state =
   pcX :: nat
@@ -136,8 +150,23 @@ record pc_state =
 
 definition par :: "'a pc_state_scheme lprog \<Rightarrow> 'a pc_state_scheme lprog \<Rightarrow> 'a pc_state_scheme rel" where
   "par x y \<equiv> (assign pcX_update (\<lambda>_. 0)); (assign pcY_update (\<lambda>_. 0));
-          repeat ((T x (last x) (pcX_update, pcX) @ T y (last y) (pcX_update, pcY)))"
+          repeat ((T x (last x + 1) (pcX_update, pcX) @ T y (last y + 1) (pcY_update, pcY)))"
 
+definition apar :: "'a pc_state_scheme set \<Rightarrow> 'a pc_state_scheme lprog \<Rightarrow> 'a pc_state_scheme lprog \<Rightarrow> 'a pc_state_scheme rel" where
+  "apar i x y \<equiv> (assign pcX_update (\<lambda>_. 0)); (assign pcY_update (\<lambda>_. 0));
+          arepeat ({s. pcX s \<in> pc_set (Suc (last x)) \<and> pcY s \<in> pc_set (Suc (last y))} \<inter> i) ((T x (last x + 1) (pcX_update, pcX) @ T y (last y + 1) (pcY_update, pcY)))"
+
+lemma post_inv_par: "ht p (apar ({s. pcX s = last x + 1 \<and> pcY s = last y + 1 \<longrightarrow> s \<in> q}) x y) q \<Longrightarrow> ht p (par x y) q"
+  by (auto simp: apar_def arepeat_def par_def)
+
+lemma post_inv_apar: "ht p (apar (i \<inter> {s. pcX s = last x + 1 \<and> pcY s = last y + 1 \<longrightarrow> s \<in> q}) x y) q \<Longrightarrow> ht p (apar i x y) q"
+  by (auto simp: apar_def arepeat_def)
+
+method transform uses simp = 
+  ((rule post_inv_par | rule post_inv_apar), simp add: apar_def par_def)
+(*
+          alt [({s. pcX s = last x + 1 \<and> pcY s = last y + 1}, skip)]"
+*)
 (*
 syntax
   "_repeat_od_inv" :: "'a set \<Rightarrow> ('a set \<times> 'a rel) list \<Rightarrow> 'a rel" ("(0inv _ //repeat// /  _ //od)" [0, 0] 61)
