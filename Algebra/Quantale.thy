@@ -1,5 +1,5 @@
 theory Quantale
-  imports Abstract_Quantales
+  imports Abstract_Quantales "$AFP/Kleene_Algebra/Kleene_Algebra"
 begin
 
 no_notation 
@@ -13,7 +13,8 @@ notation
   Inf ("\<Sqinter>_" [900] 900) and
   top ("\<top>") and
   bot ("\<bottom>") and
-  times (infixl "\<cdot>" 70) 
+  times (infixl "\<cdot>" 70) and 
+  one_class.one ("1")
 
 sublocale complete_lattice \<subseteq> Sup!: abs_complete_lattice Sup
   where [simp]: "abs_complete_lattice.join Sup = op +"

@@ -144,7 +144,6 @@ lemma sep_impl_meet_subdistr: "(x -* z) \<sqinter> (y -* z) \<le> (x \<sqinter> 
 lemma sep_impl_meet_subdistl: "x -* (y \<sqinter> z) \<le> (x -* y) \<sqinter> (x -* z)"
   by (metis inf_le1 inf_le2 le_infI sep_impl_iso_var)
 
-
 (* Algebraic characterization of pure assertion by Dang *)
 definition pure :: "'a \<Rightarrow> bool" where
   "pure x \<equiv> \<forall>y z. x * \<top> \<le> x \<and> (y * z) \<sqinter> x \<le> (y \<sqinter> x) * (z \<sqinter> x)"
@@ -415,6 +414,21 @@ qed
 
 lemma "\<forall>x \<in> X. intuitionistic x \<Longrightarrow> intuitionistic (\<Sqinter> X)"
   by (metis intuitionistic_def Inf_greatest Inf_lower dual_order.antisym qiso sep_conj_top sep_conj_topr)
+
+definition int_neg :: "'a \<Rightarrow> 'a" where
+  "int_neg p \<equiv> \<top> -* -p"
+
+lemma int_neg_int: "intuitionistic (int_neg p)"
+proof (clarsimp simp: intuitionistic_def int_neg_def)
+  have "(\<top> -* - p) * \<top> = (\<top> -* \<top>) * (\<top> -* - p)"
+    using mult_commute by auto
+  also have "... = (\<top> -* - p)"
+    using calculation intuitionistic_sep_impl_top by auto
+  finally show "(\<top> -* - p) * \<top> \<le> (\<top> -* - p)"
+    by simp
+qed
+
+no_notation sep_impl (infix "-*" 55)
 
 end
 
