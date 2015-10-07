@@ -16,7 +16,7 @@ definition skip :: "'a ptran" where
   "skip \<equiv> id"
 
 definition assumption :: "'a pred \<Rightarrow> 'a ptran" ("\<lfloor>_\<rfloor>" [50] 100) where
-  "\<lfloor>p\<rfloor> \<equiv> \<lambda>q. -p + q"
+  "\<lfloor>p\<rfloor> \<equiv> \<lambda>q. -p \<squnion> q"
 
 definition seq :: "'a ptran \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" (infixl ";" 65) where
   "seq \<equiv> op o"
@@ -28,12 +28,44 @@ primrec pow :: "'a ptran \<Rightarrow> nat \<Rightarrow> 'a ptran" where
   "pow F 0 = \<top>"
 | "pow F (Suc n) = F o (pow F n)"
 
+lemma iso_pow: "mono F \<Longrightarrow> F \<le> G \<Longrightarrow> pow F n \<le> pow G n"
+  apply (induct n)
+  apply simp
+  apply auto
+  apply (simp add: le_fun_def)
+  apply (rule allI)
+  apply (erule_tac x=x in allE)
+  apply (erule_tac x="pow G n x" in allE)
+  apply (rule order_trans[rotated])
+  apply assumption
+  apply (rule monoE)
+  apply assumption+
+done
+
 definition iteration :: "'a ptran \<Rightarrow> 'a ptran" ("_\<^sup>\<omega>" [999] 1000) where
   "F\<^sup>\<omega> \<equiv> \<Sqinter>{pow F n | n. True}"
+
+lemma iso_iter: "mono F \<Longrightarrow> F \<le> G \<Longrightarrow> F\<^sup>\<omega> \<le> G\<^sup>\<omega>"
+  apply (auto simp: iteration_def intro!: Inf_mono)
+  apply (rule_tac x="pow F n" in exI)
+  apply (auto intro: iso_pow)
+done
 
 definition while :: "'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" where
   "while b F \<equiv> (\<lfloor>b\<rfloor> o F)\<^sup>\<omega> o \<lfloor>-b\<rfloor>"
 
+lemma iso_while: "mono F \<Longrightarrow> F \<le> G \<Longrightarrow> while b F \<le> while b G"
+proof (auto simp: while_def)
+  assume a: "F \<le> G" and "mono F"
+  hence "mono (\<lfloor>b\<rfloor> \<circ> F)"
+    by (auto simp: mono_def assumption_def)
+  moreover have "\<lfloor>b\<rfloor> \<circ> F \<le> \<lfloor>b\<rfloor> \<circ> G"
+    using a by (auto simp: assumption_def le_fun_def)
+  ultimately have "(\<lfloor>b\<rfloor> \<circ> F)\<^sup>\<omega> \<le> (\<lfloor>b\<rfloor> \<circ> G)\<^sup>\<omega>"
+    by (auto intro!: iso_iter)
+  thus "(\<lfloor>b\<rfloor> \<circ> F)\<^sup>\<omega> \<circ> \<lfloor>- b\<rfloor> \<le> (\<lfloor>b\<rfloor> \<circ> G)\<^sup>\<omega> \<circ> \<lfloor>- b\<rfloor>"
+    by (auto simp: le_fun_def)
+qed
 
 text {* Annotated programs for automatic verification *}
 
@@ -357,5 +389,18 @@ lemma hl_apost_classic [sl]: "mono F \<Longrightarrow> Q' \<le> Q \<Longrightarr
   
 lemma hl_aprog_classic : "mono F \<Longrightarrow> P \<le> P' \<Longrightarrow> Q' \<le> Q \<Longrightarrow> ht P' F Q' \<Longrightarrow> ht P (aprog P' F Q') Q"
   by (auto simp: aprog_def intro: sl hl_classic)
+
+lemma hl_exs: "(\<And>x. ht (P x) F Q) \<Longrightarrow> ht (EXS x. P x) F Q"
+  by (auto simp: ht_def)
+
+lemma hl_exs2: "mono F \<Longrightarrow> (\<forall>x. ht (P x) F (Q x)) \<Longrightarrow> ht (EXS x. P x) F (EXS x. Q x)"
+  apply (auto simp: ht_def)
+  apply (erule_tac x=x in allE)
+  apply (erule monoE)
+  apply (rule pred_exI2)
+  apply force
+done
+
+
 
 end

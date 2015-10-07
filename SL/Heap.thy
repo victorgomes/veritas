@@ -6,7 +6,7 @@ section {* Heaplet Model *}
 
 type_synonym heap = "nat \<Rightarrow> nat option"
 
-definition ortho :: "heap \<Rightarrow> heap \<Rightarrow> bool" (infix "\<bottom>" 55)
+definition ortho :: "(nat \<Rightarrow> nat option) \<Rightarrow> (nat \<Rightarrow> nat option) \<Rightarrow> bool" (infix "\<bottom>" 55)
   where "h1 \<bottom> h2 \<equiv> dom h1 \<inter> dom h2 = {}"
 
 lemma theI: "h x = Some y \<Longrightarrow> the (h x) = y"
