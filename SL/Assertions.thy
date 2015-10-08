@@ -294,7 +294,7 @@ lemma llist_empty_var: "llist [] i = (i \<Midarrow> #0) \<sqinter> emp"
 lemma llist_empty: "llist [] i = <{s. i s = 0}>"
   by (auto simp add: llist_def pure_pred_def emp_def)
 
-lemma llist_empty_zero: "llist [] (\<lambda>s. 0) = emp"
+lemma llist_empty_zero [simp]: "llist [] (\<lambda>s. 0) = emp"
   by (auto simp add: llist_def emp_def)
 
 lemma llist_simp2: "llist (Cons x xs) i = <{s. i s \<noteq> 0}> * (EXS k. (i \<mapsto> #x, #k) * llist xs #k)"
@@ -321,9 +321,9 @@ section {* Tactics *}
 (*****************************************************************************************)
 
 
-named_theorems sep_simps
+named_theorems sep_simp
 
-lemmas [sep_simps] =
+lemmas [sep_simp] =
   bbi.mult_1_left
   bbi.mult_1_right 
   bbi.mult_1_left
@@ -331,35 +331,35 @@ lemmas [sep_simps] =
   list_seg_empty
   list_seg.simps(2)
   doublet_def
-  llist_empty_zero
-  llist_empty
+llist_empty
+llist_empty_zero
   llist_simp2
   points_to_def
   any_singleton_def
   any_points_to_def
 
-lemma [sep_simps]: "true * p = p * true"
+lemma [sep_simp]: "true * p = p * true"
   by (simp add: sep_comm)
 
-lemma [sep_simps]: "<p> * <q> = <p \<sqinter> q>"
+lemma [sep_simp]: "<p> * <q> = <p \<sqinter> q>"
   by (auto simp: pure_pred_def emp_def sep_def)
 
-lemma [sep_simps]: "<p> * (<q> * r) = <p \<sqinter> q> * r"
+lemma [sep_simp]: "<p> * (<q> * r) = <p \<sqinter> q> * r"
   by (auto simp: pure_pred_def emp_def sep_def)
 
-lemma [sep_simps]: "p * <q>  = <q> * p"
+lemma [sep_simp]: "p * <q>  = <q> * p"
   by (simp add: sep_comm)
 
-lemma [sep_simps]: "q * (<p> * r) = <p> * (q * r)"
+lemma [sep_simp]: "q * (<p> * r) = <p> * (q * r)"
   by (auto simp: pure_pred_def emp_def sep_def)
 
-lemma [sep_simps]: "x * y * z = x * (y * z)"
+lemma [sep_simp]: "x * y * z = x * (y * z)"
   by (simp add: sep_assoc)
 
-lemma [sep_simps]: "(EXS x. P x) * Q = (EXS x. P x * Q)"
+lemma [sep_simp]: "(EXS x. P x) * Q = (EXS x. P x * Q)"
   by (auto simp: sep_def)
 
-lemma exs [sep_simps]: "P * (EXS x. Q x) = (EXS x. P * Q x)"
+lemma exs [sep_simp]: "P * (EXS x. Q x) = (EXS x. P * Q x)"
   by (auto simp: sep_def)
 
 named_theorems cancel_same
@@ -377,7 +377,7 @@ lemma [cancel_same]: "p \<subseteq> q \<Longrightarrow> xs = ys \<Longrightarrow
   by (simp add: bbi.Sup.qisor)
 
 
-lemma [sep_simps, simp]: "<UNIV> = emp"
+lemma [sep_simp, simp]: "<UNIV> = emp"
   by (auto simp: pure_pred_def)
 
 named_theorems sep_same
@@ -483,75 +483,147 @@ lemma "(EXS x. Q x \<sqinter> R x) \<subseteq> (EXS x. Q x) \<sqinter> (EXS x. R
 apply auto
 done
 
-named_theorems sep_mono
+lemma [spred]: "subst_pred <P> i_update j = <subst_pred_s P i_update j>"
+  by (auto simp: subst_pred_def pure_pred_def emp_def)
 
-lemma trick : "mono (f :: 'a pred \<Rightarrow> 'a pred)"
-oops
-(*
-lemma tt2: "(s, h) \<in> P(i \<mapsto> x) \<Longrightarrow> mono P \<Longrightarrow> ((s, h) \<in> P(emp) \<Longrightarrow> (s, h) \<in> Q(true)) \<Longrightarrow> (s, h) \<in> Q(i \<hookrightarrow> x)"
-sorry
+lemma [sep_simp, simp]: "<{}> = bot"
+  by (auto simp: pure_pred_def) 
 
-lemma tt3: "(s, h) \<in> P(i \<mapsto> x) \<Longrightarrow> mono P \<Longrightarrow> ((s, h) \<in> P(emp) \<Longrightarrow> (s, h) \<in> Q(emp)) \<Longrightarrow> (s, h) \<in> Q(i \<mapsto> -)"
-sorry
+lemma [sep_simp, simp]: "s \<in> (if P then UNIV else {}) = P"
+  by auto
 
-lemma tt4: "(s, h) \<in> P(i \<mapsto> x) \<Longrightarrow> mono P \<Longrightarrow> ((s, h) \<in> P(emp) \<Longrightarrow> (s, h) \<in> Q(emp)) \<Longrightarrow> (s, h) \<in> Q(i \<mapsto> -)"
-sorry
-
-lemma tt5: "mono P \<Longrightarrow> P(emp) \<subseteq> Q(emp) \<Longrightarrow> P(i \<mapsto> x) \<subseteq> Q(i \<mapsto> x)"
-sorry
-
-lemma tt5': "(s, h) \<in> P(i \<mapsto> x) \<Longrightarrow> mono P \<Longrightarrow> ((s, h) \<in> P(emp) \<Longrightarrow> (s, h) \<in> Q(emp)) \<Longrightarrow> (s, h) \<in> Q(i \<mapsto> x)"
-sorry
-
-lemma tt6[simp]: "i x = 0 \<Longrightarrow> ((x, y) \<in> P (llist xs i)) = ((x, y) \<in> P emp \<and> xs = [])"
-sorry
-
-
-lemma "Q \<longrightarrow> P \<Longrightarrow> Q \<Longrightarrow> P" 
-  apply (match premises in I: "Q \<longrightarrow> P" and I': Q \<Rightarrow> \<open>auto simp: I I'\<close>)
+lemma hd_tl: "x \<noteq> [] \<Longrightarrow> rev x @ y = rev (tl x) @ (Cons (hd x) y)"
+  apply (induct x)
+  apply simp
+  apply auto
 done
 
 
-lemma bb: "P \<Longrightarrow> P = P' \<Longrightarrow> (P' \<Longrightarrow> Q) \<Longrightarrow> Q"
-by auto
 
-lemma "llist (xa @ xb) i = llist xa i * llist xb j"
+schematic_lemma s_singleton: "(s, h) \<in> (i \<mapsto> j) \<Longrightarrow> (s, h) \<in> (i \<mapsto> (\<lambda>_.?x))"
+  by (auto simp: singleton_def)
+
+lemma cutE1: "(s, h) \<in> p * q \<Longrightarrow> (\<And>h. (s, h) \<in> q \<Longrightarrow> (s, h) \<in> q') \<Longrightarrow> (s, h) \<in> p * q'"
+  by (auto simp: sep_def)
+
+lemma cutE1': "(s, h) \<in> p \<Longrightarrow> (q = emp) \<Longrightarrow> (s, h) \<in> p * q"
+  by (auto simp: sep_def emp_def)
+
+lemma cutE1'': "(s, h) \<in> q \<Longrightarrow> (p = emp) \<Longrightarrow> (s, h) \<in> p * q"
+  by (auto simp: sep_def emp_def)
+
+schematic_lemma llist_J: "(s, h) \<in> llist xa j \<Longrightarrow> (s, h) \<in> llist xa (\<lambda>_. ?x)"
+  apply (induct xa arbitrary: x)
+  apply (simp add: llist_empty pure_pred_def)
+oops
+
+lemma final: "(s, h) \<in> llist xs j \<Longrightarrow> (s, h) \<in> llist xs (\<lambda>_. j s)"
+  apply (induct xs)
+  apply (simp add: sep_simp llist_empty pure_pred_def)
+  apply (simp add: llist_simp2)
+  apply auto
+
+        apply (erule split_pure_sepE)
+        apply (erule pred_exE')
+        apply (rule_tac x=x in exI)
+        apply (simp add: singleton_def doublet_def sep_def)
+        apply (erule split_pure_sepE)
+        apply simp
+done
+    
+declare  Set.Diff_eq [sep_simp]
+
+lemma test2: "(s, h) \<in> (i \<mapsto> j) * q \<Longrightarrow> ((s, h) \<in> (i \<mapsto> (\<lambda>_. j s)) * q \<Longrightarrow> G) \<Longrightarrow> G"
 sorry
 
-*)
-method sep_normal =
-  (subst sep_simps | subst (asm) sep_simps | subst spred | subst (asm) spred | rule pred_exE)+
+lemma test3: "(s, h) \<in> (i \<mapsto> e) * p \<Longrightarrow> e s = e' s \<Longrightarrow> (\<And>h'. (s, h) \<in> p \<Longrightarrow> (s, h) \<in> q) \<Longrightarrow> (s, h) \<in> (i \<mapsto> e') * q"
+sorry
 
-method sep_same = 
-  (assumption 
-    | rule sep_same 
-(*    | rule trick *)
-    | sep_normal
-(*
-    | match conclusion in "(s, h) \<in> Q(i \<hookrightarrow> x)" for s h Q i x \<Rightarrow> \<open>erule tt2\<close>
-    | match conclusion in "(s, h) \<in> Q(i \<mapsto> -)" for s h Q i \<Rightarrow> \<open>erule tt3\<close>
-*)
-    )+
-(*
-method sep_auto = 
+schematic_lemma test: "(s, h) \<in> (i \<mapsto> j) * q \<Longrightarrow> ((s, h) \<in> (i \<mapsto> (\<lambda>_.?x)) * q \<Longrightarrow> G) \<Longrightarrow> G"
+  by (auto simp: sep_def singleton_def)
+
+
+lemma cutE2: "(s, h) \<in> p * q \<Longrightarrow> (\<And>h. (s, h) \<in> q \<Longrightarrow> (s, h) \<in> p' * q') \<Longrightarrow> (s, h) \<in> p' * (p * q')"
+  apply (auto simp: sep_def ortho_def)
+by (smt Int_commute Un_empty dom_map_add inf_sup_distrib1 map_add_assoc map_add_comm)
+
+lemma cutE2': "(s, h) \<in> p * r \<Longrightarrow> (\<And>h. (s, h) \<in> p \<Longrightarrow> (s, h) \<in> q1 * (q2 * q3)) \<Longrightarrow> (s, h) \<in> q1 * (q2 * (q3 * q))"
+sorry
+
+method sep_simp =
+  (subst sep_simp | subst (asm) sep_simp | subst spred | subst (asm) spred | rule pred_exE)+
+
+named_theorems sep_intro
+named_theorems sep_elim
+
+named_theorems sep_safe_intro
+named_theorems sep_safe_elim
+
+method sep_same = (
+    ((erule cutE1 | erule cutE1'| erule cutE2 | erule cutE1'' | erule cutE2')+)?
+)
+
+method sep_safe_split =
   (
-    sep_normal?,             (* Normalize *)
-    (rule subrelI)?,        (* Subset relation introduction *)
-    ((erule pred_conjE)+)?,  (* Conjunction elimination *)
-    ((erule pred_exE)+)?,   (* Eliminate existentials in premises *)
-    ((rule pred_conjI)+)?;  (* Conjunction introduction *)
+    ((rule Set.IntI)+)?;  (* Conjunction elimination *)
+      (
+        ((erule Set.IntE)+)?,  (* Conjunction elimination *)
     
-      (sep_same?,           (* Eliminate same expressions in both sides *)
-        (simp?, (erule conjE)+)?; (* Conjunction introduction *)
-        ((rule exI)+)?; (* Existential introduction *)
-        (simp?, (rule conjI)+)?; (* Conjunction introduction *)
-        sep_same? 
-      );
-     sep_normal?,
-     simp?
+        ((erule pred_exE')+)?,   (* Eliminate existentials in premises *)
+        ((erule split_pure_sepE)+)?,   (* Eliminate existentials in premises *)
+    
+        sep_same?,
+        (sep_simp, sep_safe_split)?,
+        (assumption | rule HOL.refl)?
+      )
+  )
+
+method sep_split =
+  (
+    sep_safe_split;
+    ((rule pred_exI')+)?,
+    ((rule split_pure_sep')+)?;
+    simp?;
+    (
+      (sep_same | sep_simp, sep_split)?,
+      (assumption | rule HOL.refl)?
     )
-*)
+  )
+
+
+method sep_safe = (
+    sep_simp?,             (* Normalize *)
+    (rule subrelI)?,        (* Subset relation introduction *)
+
+    sep_safe_split?;
+
+    (((erule sep_safe_elim | rule sep_safe_intro)+, simp?); sep_safe_split?)?;
+    sep_same?;
+    (assumption | rule HOL.refl)?
+)
+
+
+method sep_auto uses elim intro = 
+  (
+    sep_simp?,             (* Normalize *)
+    (rule subrelI)?,        (* Subset relation introduction *)
+    sep_safe_split?;
+
+    sep_split?;
+    ((erule sep_elim | rule sep_intro)+; simp?, sep_split?)?;
+    sep_same?;
+    (assumption | rule HOL.refl)?;
+    auto?
+  )
+
+
+declare zero [sep_elim]
+  not_zero [sep_safe_elim]
+  hd_tl [sep_intro]
+  final [intro]
+  test3 [sep_elim]
 (*
+
 record tt =
   i :: nat
   j :: nat
@@ -559,21 +631,18 @@ record tt =
 
 
 lemma "<{s. i s = 0}> *  (EXS x xa. llist x i * llist xa j * <{s. rev xs = rev x @ xa}>) \<subseteq> llist (rev xs) j"
-apply sep_normal
 apply sep_auto
-apply (match premises in I: "i x = 0" and I':"((x, y) \<in> P (llist xs i))" for i x y P xs \<Rightarrow> \<open>rule bb[rotated], rule tt6[where y=y and P=P and xs=xs], rule I\<close>)
-apply sep_aut
 oops
 
 lemma "list_seg (Cons x xs) i k
     \<subseteq> (EXS x. ((\<lambda>s. i s + 1) \<hookrightarrow> (\<lambda>_. x)) \<inter>
                subst_pred ((i \<mapsto> -) * ((\<lambda>s. i s + 1) \<mapsto> -) * subst_pred (list_seg xs i k) i_update j) j_update (\<lambda>_. x))"
-apply sep_normal
+apply sep_auto
 oops
 
 lemma "llist xs i \<subseteq> subst_pred (EXS x xa. llist x i * llist xa j \<inter> {(s, h). rev xs = rev x @ xa}) j_update (\<lambda>_. 0)"
 apply sep_auto
-done
+oops
 
 lemma "{(s, h). i s \<noteq> 0} \<inter> (EXS x xa. llist x i * llist xa j \<inter> {(s, h). rev xs = rev x @ xa})
     \<subseteq> (EXS x. ((\<lambda>s. i s + 1) \<hookrightarrow> (\<lambda>_. x)) \<inter>
@@ -582,13 +651,8 @@ lemma "{(s, h). i s \<noteq> 0} \<inter> (EXS x xa. llist x i * llist xa j \<int
                  (((\<lambda>s. i s + 1) \<mapsto> j) -*
                   subst_pred (subst_pred (EXS x xa. llist x i * llist xa j \<inter> {(s, h). rev xs = rev x @ xa}) i_update k) j_update i))
                 k_update (\<lambda>_. x))"
-apply sep_auto
-apply (rule subrelI)
-apply (erule pred_conjE)
-apply (erule pred_exE)+
-apply (erule pred_conjE)
-apply simp
-apply (erule conjE)
+apply sep_safe
+
 oops
 
 hide_const i j k
@@ -598,14 +662,14 @@ lemma "list_seg xs i j * list_seg ys j k \<subseteq> list_seg (xs@ys) i k"
 
 oops
 (*
-  ((subst sep_normal)+ |
-  (rule order_trans[rotated], rule l1, rule allI, rule order_refl) | subst sep_simps )
+  ((subst sep_simp)+ |
+  (rule order_trans[rotated], rule l1, rule allI, rule order_refl) | subst sep_simp )
 *)
-*)
+
 lemma "(EXS x. (x \<mapsto> i) * true * <{s. x s = j s}>) * (EXS x. (x \<hookrightarrow> j) * true) * emp * (k \<mapsto> i, j) * <{s. i s = j s}> \<subseteq> (EXS y :: 'a. F y) "
 
-apply sep_normal
+apply sep_auto
 oops
 
-
+*)
 end

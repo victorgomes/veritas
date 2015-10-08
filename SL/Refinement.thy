@@ -208,7 +208,7 @@ lemma lookup_ref [rlaw]: "\<forall>s x. k (k_update (\<lambda>_. x) s) = x \<Lon
                apply (rule hl_pre[rotated])
                apply (rule sl_lookup2)
                apply (rule mono_exs2)
-               apply sep_normal
+               apply sep_simp
                apply (rule reynolds5')
                apply (metis (no_types, lifting) bbi.Sup.qisol bbi.mult.left_commute top_greatest)
                apply simp

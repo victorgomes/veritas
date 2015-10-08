@@ -266,7 +266,7 @@ method hoare_init uses simp =
   ((subst simp | subst fst_conv | subst snd_conv)+)?
 
 method hoare_step uses simp hl = 
-  (hoare_init simp: simp, (assumption | rule subset_refl | rule mptran  | rule lptran | rule hl sl | rule allI | rule ballI | sep_normal | rule hl_exs))
+  (hoare_init simp: simp, (assumption | rule subset_refl | rule mptran  | rule lptran | rule hl sl | rule allI | rule ballI | sep_simp))
 
 method hoare_ind uses simp hl = 
   (hoare_step simp: simp hl: hl; (hoare_ind simp: simp hl: hl)?)+
