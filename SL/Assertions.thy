@@ -4,6 +4,7 @@ begin
 
 no_notation 
   times (infixl "*" 70) and
+  sup (infixl "+" 60) and
   bot ("\<bottom>")
 
 type_synonym 'a pred = "('a \<times> heap) set"
@@ -43,10 +44,10 @@ abbreviation wand :: "'a pred \<Rightarrow> 'a pred \<Rightarrow> 'a pred" (infi
   "p -* q \<equiv> bbi.sep_impl p q"
 
 abbreviation (input) 
-  constants :: "'b \<Rightarrow> ('a \<Rightarrow> 'b)" ("#_") where
-  "#x \<equiv> \<lambda>_. x"
+  constants :: "'b \<Rightarrow> ('a \<Rightarrow> 'b)" ("$_") where
+  "$x \<equiv> \<lambda>_. x"
 
-abbreviation 
+abbreviation
   pred_ex :: "('b \<Rightarrow> 'a set) \<Rightarrow> 'a set" (binder "EXS " 10) where
   "EXS x. P x \<equiv> {s. \<exists>x. s \<in> P x}"
 
@@ -64,8 +65,36 @@ abbreviation true :: "'a pred" where
 abbreviation false :: "'a pred" where
   "false \<equiv> {}"
 
-definition pure_pred :: "'a set \<Rightarrow> 'a pred" ("<_>") where
+lemma exs_sepl: "(EXS x. P x) * Q = (EXS x. P x * Q)"
+  by (auto simp: sep_def)
+
+lemma exs_sepr: "P * (EXS x. Q x) = (EXS x. P * Q x)"
+  by (auto simp: sep_def)
+
+lemma mono_exs: "(\<And>x. P x \<subseteq> Q x) \<Longrightarrow> (EXS x. P x) \<subseteq> (EXS y. Q y)"
+  by auto
+
+(*****************************************************************************************)
+section {* Assertions only about store *}
+(*****************************************************************************************)
+
+definition store_pred :: "'a set \<Rightarrow> 'a pred" ("<_>") where
   "<P> \<equiv> {(s, h). s \<in> P} \<sqinter> emp"
+
+lemma sp_sep: "<p> * <q> = <p \<sqinter> q>"
+  by (auto simp: store_pred_def emp_def sep_def)
+
+lemma sp_sep_inf: "<p> * (<q> * r) = <p \<sqinter> q> * r"
+  by (auto simp: store_pred_def emp_def sep_def)
+
+lemma sp_sep_comm: "p * <q>  = <q> * p"
+  by (simp add: sep_comm)
+
+lemma sp_sep_comm_var: "q * (<p> * r) = <p> * (q * r)"
+  by (auto simp: store_pred_def emp_def sep_def)
+
+lemma sp_emp [simp]: "<UNIV> = emp"
+  by (auto simp: store_pred_def)
 
 (*****************************************************************************************)
 section {* Variables and Expressions *}
@@ -133,7 +162,7 @@ definition singleton :: "'a nat_exp \<Rightarrow> 'a nat_exp \<Rightarrow> 'a pr
   "e \<mapsto> e' \<equiv> {(s, h). h = [e s \<mapsto> e' s]}"
 
 definition any_singleton :: "'a nat_exp \<Rightarrow> 'a pred" ("_ \<mapsto> -" [50] 60) where
-  "e \<mapsto> - \<equiv> EXS e'. e \<mapsto> #e'"
+  "e \<mapsto> - \<equiv> EXS e'. e \<mapsto> $e'"
 
 definition points_to :: "'a nat_exp \<Rightarrow> 'a nat_exp \<Rightarrow> 'a pred" ("_ \<hookrightarrow> _" [50, 50] 60) where
   "e \<hookrightarrow> e' \<equiv> (e \<mapsto> e') * \<top>"
@@ -160,7 +189,7 @@ lemma subst_no_state [spred]: "subst_pred {(s, h). P} i_update j = {(s, h). P}"
 section {* Arbitrary Lemmas *}
 (*****************************************************************************************)
 
-lemma wand_eq: "{(s, h). \<forall>h'. h \<bottom> h' \<and> (s, h') \<in> P \<longrightarrow> (s, h ++ h') \<in> Q} \<le> P -* Q"
+lemma wand_ineq: "{(s, h). \<forall>h'. h \<bottom> h' \<and> (s, h') \<in> P \<longrightarrow> (s, h ++ h') \<in> Q} \<le> P -* Q"
   apply (rule bbi.sep_implI1)
   apply (clarsimp simp: sep_def)
 done
@@ -173,19 +202,19 @@ lemma reynolds1: "(a \<mapsto> a') \<sqinter> (b \<mapsto> b') = (a \<mapsto> a'
 lemma reynolds2: "(a \<hookrightarrow> a') * (b \<hookrightarrow> b') \<le> -(a \<Midarrow> b)"
   by (auto simp: points_to_def singleton_def sep_def ortho_def)
 
-lemma alls_exs_eq: "(ALLS x. - P x) = - (EXS x. P x)"
+lemma reynolds3: "(ALLS x. - P x) = - (EXS x. P x)"
   by auto
 
-lemma reynolds3_helper: "\<forall>s h. - Q h \<longrightarrow> P (s, h) \<Longrightarrow> - {s. P s} \<subseteq> {(s, h). Q h}"
+lemma reynolds4_helper: "\<forall>s h. - Q h \<longrightarrow> P (s, h) \<Longrightarrow> - {s. P s} \<subseteq> {(s, h). Q h}"
   by auto
 
-lemma reynolds3: "emp = (ALLS x. -(x \<hookrightarrow> -))"
-  apply (subst alls_exs_eq)
+lemma reynolds4: "emp = (ALLS x. -(x \<hookrightarrow> -))"
+  apply (subst reynolds3)
   apply (rule antisym)
   apply (simp add: emp_def)
   prefer 2
   apply (subst emp_def)
-  apply (rule reynolds3_helper)
+  apply (rule reynolds4_helper)
   apply (auto simp: any_points_to_def any_singleton_def singleton_def sep_def ortho_def)
   apply (subgoal_tac "\<exists>n. n \<in> dom h")
   prefer 2
@@ -197,34 +226,33 @@ lemma reynolds3: "emp = (ALLS x. -(x \<hookrightarrow> -))"
   apply (auto intro: heap_split)
   by (metis fun_upd_same map_add_None)
 
-
-lemma reynolds4: "(e \<mapsto> e') * ((e \<mapsto> e') -* p) \<le> (e \<hookrightarrow> e') \<sqinter> p"
+lemma reynolds5: "(e \<mapsto> e') * ((e \<mapsto> e') -* p) \<le> (e \<hookrightarrow> e') \<sqinter> p"
   apply (subst points_to_def)
   apply (rule bbi.sep_impl_to_meet)
 done
 
-lemma reynolds5_helper: "R * {(s, h). \<forall>h'. h \<bottom> h' \<and> (s, h') \<in> P \<longrightarrow> (s, h ++ h') \<in> Q} \<le> R * (P -* Q)"
-  using bbi.Sup.qisol wand_eq by blast
+lemma reynolds6_helper: "R * {(s, h). \<forall>h'. h \<bottom> h' \<and> (s, h') \<in> P \<longrightarrow> (s, h ++ h') \<in> Q} \<le> R * (P -* Q)"
+  using bbi.Sup.qisol wand_ineq by blast
 
-lemma reynolds5: "(e \<hookrightarrow> e') \<sqinter> p \<le> (e \<mapsto> e') * ((e \<mapsto> e') -* p)"
+lemma reynolds6: "(e \<hookrightarrow> e') \<sqinter> p \<le> (e \<mapsto> e') * ((e \<mapsto> e') -* p)"
   apply (rule order_trans)
   prefer 2
-  apply (rule reynolds5_helper)
+  apply (rule reynolds6_helper)
   apply (auto simp: points_to_def singleton_def sep_def ortho_def)
   apply (erule_tac x=h2 in allE)
   apply auto
   by (simp add: domIff map_add_upd_left)
 
-lemma reynolds5': "P \<le> (e \<mapsto> e') * true \<Longrightarrow> P \<le> Q \<Longrightarrow> P \<le> (e \<mapsto> e') * ((e \<mapsto> e') -* Q)"
+lemma reynolds6_var: "P \<le> (e \<mapsto> e') * true \<Longrightarrow> P \<le> Q \<Longrightarrow> P \<le> (e \<mapsto> e') * ((e \<mapsto> e') -* Q)"
   apply (rule order_trans[rotated])
-  apply (rule reynolds5)
+  apply (rule reynolds6)
   apply (auto simp: points_to_def)
 done
   
-
-
+lemma reynolds6_var2: "P \<le> (e \<mapsto> -) * true \<Longrightarrow> (P \<le> (e \<mapsto> e') * true \<Longrightarrow> P \<le> (e \<mapsto> e') *  Q) \<Longrightarrow> P \<le> (e \<mapsto> -) * ((e \<mapsto> e') -* Q)"
+sorry
 (*****************************************************************************************)
-section {* Lists *}
+section {* List Segments *}
 (*****************************************************************************************)
 
 abbreviation (input) is_nil :: "'a nat_exp \<Rightarrow> 'a pred" ("_ \<Midarrow> nil") where
@@ -232,12 +260,12 @@ abbreviation (input) is_nil :: "'a nat_exp \<Rightarrow> 'a pred" ("_ \<Midarrow
 
 primrec list_seg :: "nat list \<Rightarrow> 'a nat_exp \<Rightarrow> 'a nat_exp \<Rightarrow> 'a pred" where
   "list_seg [] i j = emp \<sqinter> (i \<Midarrow> j)"
-| "list_seg (x#xs) i k = (EXS j. (i \<mapsto> #x, #j) * list_seg xs #j k)"
+| "list_seg (x#xs) i k = (EXS j. (i \<mapsto> $x, $j) * list_seg xs $j k)"
 
 lemma list_seg_empty: "list_seg [] i j = <{s. i s = j s}>"
-  by (auto simp: pure_pred_def)
+  by (auto simp: store_pred_def)
 
-lemma singleton_list [simp]: "(list_seg [x] i j) = (i \<mapsto> #x, j)"
+lemma lint_seg_singl: "(list_seg [x] i j) = (i \<mapsto> $x, j)"
   by (auto simp: sep_def doublet_def singleton_def emp_def)
 
 lemma list_seg_exs: "(EXS j. (emp \<sqinter> (i \<Midarrow> j)) * list_seg ys j k) = list_seg ys i k"
@@ -252,16 +280,13 @@ lemma list_seg_merge: "(list_seg (xs@ys) i k) = (EXS j. (list_seg xs i j) * (lis
   apply (auto simp: sep_def doublet_def singleton_def emp_def ortho_def)
   oops
 
-lemma list_seg_rev: "(list_seg (xs@[x]) i k) = (EXS j. (list_seg xs i j) * (j \<mapsto> #x, k))"
-  oops
-
-lemma "list_seg xs i j \<le> -(i \<Midarrow> nil) \<squnion> ((#xs \<Midarrow> #[]) \<sqinter> (i \<Midarrow> nil))"
+lemma list_seg_reynolds1: "list_seg xs i j \<le> -(i \<Midarrow> nil) \<squnion> (($xs \<Midarrow> $[]) \<sqinter> (i \<Midarrow> nil))"
   apply (induct xs)
   apply clarsimp
   apply (auto simp: sep_def doublet_def singleton_def emp_def ortho_def)
 done
 
-lemma "list_seg xs i j \<le> (i \<Midarrow> j) \<squnion> - (#xs \<Midarrow> #[])"
+lemma list_seg_reynolds2: "list_seg xs i j \<le> (i \<Midarrow> j) \<squnion> - ($xs \<Midarrow> $[])"
   apply (induct xs)
   apply clarsimp
   apply (auto simp: sep_def doublet_def singleton_def emp_def ortho_def)
@@ -273,37 +298,30 @@ lemma subst_list_seg [spred]: "subst_pred (list_seg xs m n) i_update j = list_se
   apply (auto simp: spred)
 done
 
-no_notation sup (infixl "+" 65)
 
-lemma exs1: "(EXS j. (i \<mapsto> a, #j) * P j) = (i \<mapsto> a) * (EXS j. ((\<lambda>s. i s + 1) \<mapsto> #j) * P j)"
-  apply (auto simp: sep_def doublet_def singleton_def emp_def ortho_def)
-  apply (erule_tac x="[Suc (i s) \<mapsto> x] ++ h2" in allE)
-  apply auto
-done
-(*
-lemma "list_seg [] i j = <{s. i s = j s}>"
-  by (auto simp: state_pred_def emp_def)
-*)
+(*****************************************************************************************)
+section {* Linked List *}
+(*****************************************************************************************)
 
 definition llist :: "nat list \<Rightarrow> 'a nat_exp \<Rightarrow> 'a pred" where
-  "llist xs i \<equiv> list_seg xs i #0 \<sqinter> {(s, h). 0 \<notin> dom h}"
-
-lemma llist_empty_var: "llist [] i = (i \<Midarrow> #0) \<sqinter> emp"
-  by (auto simp add: llist_def emp_def)
+  "llist xs i \<equiv> list_seg xs i $0 \<sqinter> {(s, h). 0 \<notin> dom h}"
 
 lemma llist_empty: "llist [] i = <{s. i s = 0}>"
-  by (auto simp add: llist_def pure_pred_def emp_def)
+  by (auto simp add: llist_def store_pred_def emp_def)
+
+lemma llist_empty_var: "llist [] i = (i \<Midarrow> $0) \<sqinter> emp"
+  by (auto simp add: llist_def emp_def)
 
 lemma llist_empty_zero [simp]: "llist [] (\<lambda>s. 0) = emp"
   by (auto simp add: llist_def emp_def)
 
-lemma llist_simp2: "llist (Cons x xs) i = <{s. i s \<noteq> 0}> * (EXS k. (i \<mapsto> #x, #k) * llist xs #k)"
-  apply (auto simp: llist_def sep_def doublet_def singleton_def pure_pred_def emp_def)
+lemma llist_simp: "llist (x#xs) i = <{s. i s \<noteq> 0}> * (EXS k. (i \<mapsto> $x, $k) * llist xs $k)"
+  apply (auto simp: llist_def sep_def doublet_def singleton_def store_pred_def emp_def)
   apply auto
   using neq0_conv apply fastforce
 done
 
-lemma llist_simp3: "llist (Cons x xs) i = -(i \<Midarrow> #0) \<sqinter> (EXS k. (i \<mapsto> #x, #k) * llist xs #k)"
+lemma llist_simp_var: "llist (x#xs) i = -(i \<Midarrow> $0) \<sqinter> (EXS k. (i \<mapsto> $x, $k) * llist xs $k)"
   apply (auto simp: llist_def sep_def doublet_def singleton_def)
   apply (rule_tac x=xa in exI)
   apply auto
@@ -312,14 +330,12 @@ done
 lemma subst_llist [spred]: "subst_pred (llist xs m) i_update j = llist xs (subst m i_update j)"
   apply (simp add: llist_def spred)
   apply (simp add: subst_pred_def)
-
 done
 
 
 (*****************************************************************************************)
 section {* Tactics *}
 (*****************************************************************************************)
-
 
 named_theorems sep_simp
 
@@ -331,37 +347,25 @@ lemmas [sep_simp] =
   list_seg_empty
   list_seg.simps(2)
   doublet_def
-llist_empty
-llist_empty_zero
-  llist_simp2
+  llist_empty
+  llist_empty_zero
+  llist_simp
   points_to_def
   any_singleton_def
   any_points_to_def
+  Set.Diff_eq
+  sep_assoc
+  exs_sepl
+  exs_sepr
+  sp_sep
+  sp_sep_inf
+  sp_sep_comm
+  sp_sep_comm_var
+  sp_emp
 
 lemma [sep_simp]: "true * p = p * true"
   by (simp add: sep_comm)
-
-lemma [sep_simp]: "<p> * <q> = <p \<sqinter> q>"
-  by (auto simp: pure_pred_def emp_def sep_def)
-
-lemma [sep_simp]: "<p> * (<q> * r) = <p \<sqinter> q> * r"
-  by (auto simp: pure_pred_def emp_def sep_def)
-
-lemma [sep_simp]: "p * <q>  = <q> * p"
-  by (simp add: sep_comm)
-
-lemma [sep_simp]: "q * (<p> * r) = <p> * (q * r)"
-  by (auto simp: pure_pred_def emp_def sep_def)
-
-lemma [sep_simp]: "x * y * z = x * (y * z)"
-  by (simp add: sep_assoc)
-
-lemma [sep_simp]: "(EXS x. P x) * Q = (EXS x. P x * Q)"
-  by (auto simp: sep_def)
-
-lemma exs [sep_simp]: "P * (EXS x. Q x) = (EXS x. P * Q x)"
-  by (auto simp: sep_def)
-
+(*
 named_theorems cancel_same
 
 lemma [cancel_same]: "p \<subseteq> q \<Longrightarrow> e = e' \<Longrightarrow> (i \<mapsto> e) * p \<subseteq> (i \<mapsto> e') * q"
@@ -375,10 +379,6 @@ lemma [cancel_same]: "p \<subseteq> q \<Longrightarrow> xs = ys \<Longrightarrow
 
 lemma [cancel_same]: "p \<subseteq> q \<Longrightarrow> xs = ys \<Longrightarrow> p * (list_seg xs i j) \<subseteq> q * list_seg ys i j"
   by (simp add: bbi.Sup.qisor)
-
-
-lemma [sep_simp, simp]: "<UNIV> = emp"
-  by (auto simp: pure_pred_def)
 
 named_theorems sep_same
 
@@ -404,14 +404,14 @@ lemma aa: "(s, h) \<in> llist as i * p \<Longrightarrow> as@cs=bs \<Longrightarr
 oops
 
 lemma split_conc: "P \<subseteq> Q \<Longrightarrow> P \<subseteq> <R> * true \<Longrightarrow> P \<subseteq> <R> * Q"
-  by (auto simp: sep_def pure_pred_def emp_def)
+  by (auto simp: sep_def store_pred_def emp_def)
 
 lemma mono_exs: "(\<And>x s h. (s, h) \<in> P x \<Longrightarrow> (s, h) \<in> Q x) \<Longrightarrow> (EXS x. P x) \<subseteq> (EXS y. Q y)"
   by auto
 
 lemma mono_exs2: "(\<And>x. P x \<subseteq> Q x) \<Longrightarrow> (EXS x. P x) \<subseteq> (EXS y. Q y)"
   by auto
-
+*)
 lemma pred_conjI: "(s, h) \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> P \<sqinter> Q"
   by auto
 
@@ -435,19 +435,19 @@ lemma pred_exE': "(s, h) \<in> (EXS x. P x) \<Longrightarrow> (\<And>x. (s, h) \
 
 
 lemma split_pure_sep: "(\<And>s h. s \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> R) \<Longrightarrow> <P> * Q \<subseteq> R"
-  by (auto simp: pure_pred_def emp_def sep_def)
+  by (auto simp: store_pred_def emp_def sep_def)
 
 lemma split_pure_conj: "(\<And>s h. P s \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> R) \<Longrightarrow> Q \<sqinter> {(s, h). P s} \<subseteq> R"
-  by (auto simp: pure_pred_def emp_def sep_def)
+  by (auto simp: store_pred_def emp_def sep_def)
 
 lemma split_pure_neg: "(\<And>s h. \<not> P s \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> R) \<Longrightarrow> Q - {(s, h). P s} \<subseteq> R"
-  by (auto simp: pure_pred_def emp_def sep_def)
+  by (auto simp: store_pred_def emp_def sep_def)
 
 lemma split_pure_sepE: "(s, h) \<in> <P> * Q \<Longrightarrow> (s \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> R) \<Longrightarrow> R"
-  by (auto simp: pure_pred_def emp_def sep_def)
+  by (auto simp: store_pred_def emp_def sep_def)
 
 lemma split_pure_sep_nostateE: "(s, h) \<in> <{s. P}> * Q \<Longrightarrow> (P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> R) \<Longrightarrow> (s, h) \<in> R"
-  apply (auto simp: pure_pred_def emp_def sep_def)
+  apply (auto simp: store_pred_def emp_def sep_def)
 apply force
 done
 
@@ -456,7 +456,7 @@ lemma zero: "(s, h) \<in> llist x i * R \<Longrightarrow> i s = 0 \<Longrightarr
   apply (simp add: llist_empty)
   apply (erule split_pure_sepE)
   apply simp
-  apply (simp add: llist_simp2)
+  apply (simp add: llist_simp)
 by (metis (no_types, lifting) CollectD bbi.mult_assoc less_numeral_extra(3) split_pure_sepE)
 
 lemma not_zero: "(s, h) \<in> llist x i * R \<Longrightarrow> i s \<noteq> 0 \<Longrightarrow> (x \<noteq> [] \<Longrightarrow> (s, h) \<in> llist (Cons (hd x) (tl x)) i * R \<Longrightarrow> Q) \<Longrightarrow> Q"
@@ -464,17 +464,17 @@ lemma not_zero: "(s, h) \<in> llist x i * R \<Longrightarrow> i s \<noteq> 0 \<L
   apply (simp add: llist_empty)
   apply (erule split_pure_sepE)
   apply simp
-  apply (simp add: llist_simp2)
+  apply (simp add: llist_simp)
 done
 
 lemma split_pureE: "(s, h) \<in> <Q> * P \<Longrightarrow> (s \<in> Q \<Longrightarrow> (s, h) \<in> P \<Longrightarrow> (s, h) \<in> R) \<Longrightarrow> (s, h) \<in> R"
-  by (auto simp: pure_pred_def sep_def emp_def)
+  by (auto simp: store_pred_def sep_def emp_def)
 
 lemma split_pure_sep2: "(\<And>s h. s \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> R) \<Longrightarrow> <P> * Q \<subseteq> R"
-  by (auto simp: pure_pred_def emp_def sep_def)
+  by (auto simp: store_pred_def emp_def sep_def)
 
 lemma split_pure_sep': "s \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> <P> * Q"
-  by (auto simp: pure_pred_def emp_def sep_def)
+  by (auto simp: store_pred_def emp_def sep_def)
 
 lemma tt: "(s, h) \<in> (i \<mapsto> e) * P \<Longrightarrow> (s, h) \<in> (i \<hookrightarrow> e)"
   by (auto simp: points_to_def sep_def)
@@ -484,10 +484,10 @@ apply auto
 done
 
 lemma [spred]: "subst_pred <P> i_update j = <subst_pred_s P i_update j>"
-  by (auto simp: subst_pred_def pure_pred_def emp_def)
+  by (auto simp: subst_pred_def store_pred_def emp_def)
 
 lemma [sep_simp, simp]: "<{}> = bot"
-  by (auto simp: pure_pred_def) 
+  by (auto simp: store_pred_def) 
 
 lemma [sep_simp, simp]: "s \<in> (if P then UNIV else {}) = P"
   by auto
@@ -514,13 +514,13 @@ lemma cutE1'': "(s, h) \<in> q \<Longrightarrow> (p = emp) \<Longrightarrow> (s,
 
 schematic_lemma llist_J: "(s, h) \<in> llist xa j \<Longrightarrow> (s, h) \<in> llist xa (\<lambda>_. ?x)"
   apply (induct xa arbitrary: x)
-  apply (simp add: llist_empty pure_pred_def)
+  apply (simp add: llist_empty store_pred_def)
 oops
 
 lemma final: "(s, h) \<in> llist xs j \<Longrightarrow> (s, h) \<in> llist xs (\<lambda>_. j s)"
   apply (induct xs)
-  apply (simp add: sep_simp llist_empty pure_pred_def)
-  apply (simp add: llist_simp2)
+  apply (simp add: sep_simp llist_empty store_pred_def)
+  apply (simp add: llist_simp)
   apply auto
 
         apply (erule split_pure_sepE)
@@ -537,6 +537,9 @@ lemma test2: "(s, h) \<in> (i \<mapsto> j) * q \<Longrightarrow> ((s, h) \<in> (
 sorry
 
 lemma test3: "(s, h) \<in> (i \<mapsto> e) * p \<Longrightarrow> e s = e' s \<Longrightarrow> (\<And>h'. (s, h) \<in> p \<Longrightarrow> (s, h) \<in> q) \<Longrightarrow> (s, h) \<in> (i \<mapsto> e') * q"
+sorry
+
+lemma test4: "(s, h) \<in> (i \<mapsto> e) * p \<Longrightarrow> e s = e' s \<Longrightarrow> (\<And>h'. (s, h) \<in> p \<Longrightarrow> (s, h) \<in> q * r) \<Longrightarrow> (s, h) \<in> q * ((i \<mapsto> e') * r)"
 sorry
 
 schematic_lemma test: "(s, h) \<in> (i \<mapsto> j) * q \<Longrightarrow> ((s, h) \<in> (i \<mapsto> (\<lambda>_.?x)) * q \<Longrightarrow> G) \<Longrightarrow> G"
@@ -597,7 +600,7 @@ method sep_safe = (
 
     sep_safe_split?;
 
-    (((erule sep_safe_elim | rule sep_safe_intro)+, simp?); sep_safe_split?)?;
+    (((erule sep_safe_elim)+, force); sep_safe_split?)?;
     sep_same?;
     (assumption | rule HOL.refl)?
 )
@@ -622,6 +625,7 @@ declare zero [sep_elim]
   hd_tl [sep_intro]
   final [intro]
   test3 [sep_elim]
+  test4 [sep_elim]
 (*
 
 record tt =

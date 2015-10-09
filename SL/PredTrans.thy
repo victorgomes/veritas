@@ -365,6 +365,9 @@ lemma sl_frame [sl]: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht 
   apply (auto simp: local_def ht_def)
   by (meson Assertions.bbi.sep_implE1 Assertions.bbi.sep_implI1 contra_subsetD dual_order.trans)
 
+lemma sl_frame2 [sl]: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht (r * p) F (r * q)"
+sorry
+
 text {* Weakening / Strengthening / Consequence Rules *}
 
 lemma hl_pre: "P \<le> P' \<Longrightarrow> ht P' F Q \<Longrightarrow> ht P F Q"
@@ -387,13 +390,13 @@ lemma hl_apre_classic [sl]: "P \<le> P' \<Longrightarrow> ht P' F Q \<Longrighta
 lemma hl_apost_classic [sl]: "mono F \<Longrightarrow> Q' \<le> Q \<Longrightarrow> ht P F Q' \<Longrightarrow> ht P (apost F Q') Q"
   by (auto simp: apost_def intro!: sl)
   
-lemma hl_aprog_classic : "mono F \<Longrightarrow> P \<le> P' \<Longrightarrow> Q' \<le> Q \<Longrightarrow> ht P' F Q' \<Longrightarrow> ht P (aprog P' F Q') Q"
+lemma hl_aprog_classic [sl]: "mono F \<Longrightarrow> P \<le> P' \<Longrightarrow> Q' \<le> Q \<Longrightarrow> ht P' F Q' \<Longrightarrow> ht P (aprog P' F Q') Q"
   by (auto simp: aprog_def intro: sl hl_classic)
 
 lemma hl_exs: "(\<And>x. ht (P x) F Q) \<Longrightarrow> ht (EXS x. P x) F Q"
   by (auto simp: ht_def)
 
-lemma hl_exs2: "mono F \<Longrightarrow> (\<forall>x. ht (P x) F (Q x)) \<Longrightarrow> ht (EXS x. P x) F (EXS x. Q x)"
+lemma hl_exs2: "mono F \<Longrightarrow> (\<forall>x . ht (P x) F (Q x)) \<Longrightarrow> ht (EXS x. P x) F (EXS x. Q x)"
   apply (auto simp: ht_def)
   apply (erule_tac x=x in allE)
   apply (erule monoE)
@@ -401,6 +404,11 @@ lemma hl_exs2: "mono F \<Longrightarrow> (\<forall>x. ht (P x) F (Q x)) \<Longri
   apply force
 done
 
-
+lemma hl_exs3: "mono F \<Longrightarrow> (\<And>x . ht P F (Q x)) \<Longrightarrow> ht P F (EXS x. Q x)"
+  apply (auto simp: ht_def)
+  apply (erule monoE)
+  apply (rule pred_exI2)
+  apply force
+done
 
 end

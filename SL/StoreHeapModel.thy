@@ -139,6 +139,9 @@ lemma sl_mut: "ht ((e \<mapsto> -) * ((e \<mapsto> e') -* r)) (mutation e e') r"
   apply (rule hl_post[where Q'="(e \<mapsto> e') * ((e \<mapsto> e') -* r)"])
   by (auto simp: Assertions.bbi.sep_impl_annil1 intro!: sl_mut_global mptran)
 
+lemma sl_mut': "ht ((e \<mapsto> n) * ((e \<mapsto> e') -* r)) (mutation e e') r"
+sorry
+
 lemma sl_dipose_local [sl]: "ht (e \<mapsto> -) (dispose e) (emp)"
   by (auto simp: dispose_def singleton_def valid_mem_def any_singleton_def emp_def intro!: sl)
 
@@ -179,6 +182,11 @@ lemma sl_lookup_lkl [sl]: "vars1 v_upd v \<Longrightarrow> vars3 v_upd v'' \<Lon
     ht ((v \<Midarrow> v') \<sqinter> (e \<mapsto> v'')) (lookup v_upd e) ((v \<Midarrow> v'') \<sqinter> (subst e v_upd v' \<mapsto> v))"
   by (auto simp: lookup_def valid_mem_def singleton_def intro!: sl)
 
+lemma lookup_ref45:"ht (EXS x. (e \<mapsto> (\<lambda>_. x)) * R (\<lambda>_. x)) (lookup k_update e) ((e \<mapsto> k) * R k)"
+sorry
+
+
+
 lemma sl_lookup: "ht (EXS v'. (e \<mapsto> v') * ((e \<mapsto> v') -* (subst_pred r v_upd v'))) (lookup v_upd e) r"
   apply (auto simp: lookup_def intro!: sl)
   apply (subgoal_tac "(a, b) \<in> subst_pred r v_upd x")
@@ -197,9 +205,9 @@ lemma sl_lookup: "ht (EXS v'. (e \<mapsto> v') * ((e \<mapsto> v') -* (subst_pre
   apply auto
   by (simp add: domI ortho_def)
 
-lemma sl_lookup2: "ht (EXS v'. (e \<mapsto> #v') * ((e \<mapsto> #v') -* (subst_pred r v_upd #v'))) (lookup v_upd e) r"
+lemma sl_lookup2: "ht (EXS v'. (e \<mapsto> $v') * ((e \<mapsto> $v') -* (subst_pred r v_upd $v'))) (lookup v_upd e) r"
   apply (auto simp: lookup_def intro!: sl)
-  apply (subgoal_tac "(a, b) \<in> subst_pred r v_upd #x")
+  apply (subgoal_tac "(a, b) \<in> subst_pred r v_upd $x")
   prefer 2
   using bbi.sep_impl_annil1 apply blast
   apply (auto simp: subst_pred_def)
@@ -229,27 +237,27 @@ lemma sl_lookup_alt: "ht (EXS v'. (e \<hookrightarrow> v') \<sqinter> (subst_pre
   prefer 2
   apply assumption
   apply (rule in_mono)
-  apply (rule reynolds5)
+  apply (rule reynolds6)
 done
 
-lemma sl_lookup_alt2: "ht (EXS v'. (e \<hookrightarrow> #v') \<sqinter> (subst_pred r v_upd #v')) (lookup v_upd e) r"
+lemma sl_lookup_alt2: "ht (EXS v'. (e \<hookrightarrow> $v') \<sqinter> (subst_pred r v_upd $v')) (lookup v_upd e) r"
   apply (rule hl_pre)
   prefer 2
   apply (rule sl_lookup)
   apply (rule Collect_mono)
   apply (rule impI)
   apply (erule exE)
-  apply (rule_tac x="#xa" in exI)
+  apply (rule_tac x="$xa" in exI)
   apply (rule impE)
   prefer 2
   apply assumption
   prefer 2
   apply assumption
   apply (rule in_mono)
-  apply (rule reynolds5)
+  apply (rule reynolds6)
 done
 
-lemma sl_lookup_alt3: "p \<subseteq> (EXS v'. (e \<hookrightarrow> #v') \<sqinter> (subst_pred q v_upd #v')) \<Longrightarrow> ht p (lookup v_upd e) q"
+lemma sl_lookup_alt3: "p \<subseteq> (EXS v'. (e \<hookrightarrow> $v') \<sqinter> (subst_pred q v_upd $v')) \<Longrightarrow> ht p (lookup v_upd e) q"
 apply (rule hl_pre)
 apply assumption
 apply (rule sl_lookup_alt2)
@@ -257,16 +265,11 @@ done
 
 named_theorems hl_rules
 
-(*
-method hoare_init uses simp = 
-  ((rule allI | rule ballI | subst simp | subst fst_conv | subst snd_conv)+)?
-*)
-
 method hoare_init uses simp = 
   ((subst simp | subst fst_conv | subst snd_conv)+)?
 
 method hoare_step uses simp hl = 
-  (hoare_init simp: simp, (assumption | rule subset_refl | rule mptran  | rule lptran | rule hl sl | rule allI | rule ballI | sep_simp))
+  (hoare_init simp: simp, (assumption | rule subset_refl | rule mptran  | rule lptran | rule hl sl | rule allI | rule ballI | subst sep_assoc | rule hl_exs2))
 
 method hoare_ind uses simp hl = 
   (hoare_step simp: simp hl: hl; (hoare_ind simp: simp hl: hl)?)+

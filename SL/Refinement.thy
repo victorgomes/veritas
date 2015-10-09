@@ -2,6 +2,9 @@ theory Refinement
   imports StoreHeapModel
 begin
 
+no_notation sup (infixl "+" 65)
+notation plus (infixl "+" 65)
+
 text {* Morgan Refinement Laws *}
 
 named_theorems ref_simps
@@ -207,9 +210,9 @@ lemma lookup_ref [rlaw]: "\<forall>s x. k (k_update (\<lambda>_. x) s) = x \<Lon
                apply (rule mptran)+
                apply (rule hl_pre[rotated])
                apply (rule sl_lookup2)
-               apply (rule mono_exs2)
+               apply (rule mono_exs)
                apply sep_simp
-               apply (rule reynolds5')
+               apply (rule reynolds6_var)
                apply (metis (no_types, lifting) bbi.Sup.qisol bbi.mult.left_commute top_greatest)
                apply simp
 done
