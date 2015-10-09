@@ -2,9 +2,6 @@ theory Refinement
   imports StoreHeapModel
 begin
 
-no_notation sup (infixl "+" 65)
-notation plus (infixl "+" 65)
-
 text {* Morgan Refinement Laws *}
 
 named_theorems ref_simps
@@ -159,10 +156,7 @@ by (simp add: ht_spec_eq)
  
 lemma dispose_ref [rlaw]: "spec ((e \<mapsto> n) * r) r \<le> dispose e"
   by (simp add: mono_dispose sl_dispose_alt specI)
-(*
-lemma lookup_ref2 [rlaw]: "vars2 v_upd v v' \<Longrightarrow> vars3 v_upd v' \<Longrightarrow> free v_upd e \<Longrightarrow> spec ((e \<mapsto> v') * r) (<{s. v s = v' s}>  * (e \<mapsto> v') * r) \<le> lookup v_upd e"
-  sorry
-*)
+
 
 lemma frame_ref [rlaw]: "mono x \<Longrightarrow> local x r \<Longrightarrow> spec p q \<le> x \<Longrightarrow> spec (p * r) (q * r) \<le> x"
   using ht_spec_eq sl_frame by blast
@@ -212,6 +206,7 @@ lemma lookup_ref [rlaw]: "\<forall>s x. k (k_update (\<lambda>_. x) s) = x \<Lon
                apply (rule sl_lookup2)
                apply (rule mono_exs)
                apply sep_simp
+               apply simp
                apply (rule reynolds6_var)
                apply (metis (no_types, lifting) bbi.Sup.qisol bbi.mult.left_commute top_greatest)
                apply simp

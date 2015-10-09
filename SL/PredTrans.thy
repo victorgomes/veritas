@@ -366,7 +366,7 @@ lemma sl_frame [sl]: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht 
   by (meson Assertions.bbi.sep_implE1 Assertions.bbi.sep_implI1 contra_subsetD dual_order.trans)
 
 lemma sl_frame2 [sl]: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht (r * p) F (r * q)"
-sorry
+  by (simp add: sep_comm sl_frame)
 
 text {* Weakening / Strengthening / Consequence Rules *}
 
@@ -400,14 +400,14 @@ lemma hl_exs2: "mono F \<Longrightarrow> (\<forall>x . ht (P x) F (Q x)) \<Longr
   apply (auto simp: ht_def)
   apply (erule_tac x=x in allE)
   apply (erule monoE)
-  apply (rule pred_exI2)
+  apply (rule pred_le_exI)
   apply force
 done
 
 lemma hl_exs3: "mono F \<Longrightarrow> (\<And>x . ht P F (Q x)) \<Longrightarrow> ht P F (EXS x. Q x)"
   apply (auto simp: ht_def)
   apply (erule monoE)
-  apply (rule pred_exI2)
+  apply (rule pred_le_exI)
   apply force
 done
 

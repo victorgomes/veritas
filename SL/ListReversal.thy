@@ -1,7 +1,6 @@
-theory LinkedList3
-  imports Refinement
+theory ListReversal
+  imports LinkedList Refinement
 begin
-
 
 record rev_list =
   i :: nat
@@ -115,15 +114,6 @@ proof -
     finally show ?thesis .
 qed
 
-
-lemma reynolds6_var: "P \<le> (e \<mapsto> e' x) * true \<Longrightarrow> P \<le> Q \<Longrightarrow> P \<le> (EXS x. (e \<mapsto> e' x) * ((e \<mapsto> e' x) -* Q)) "
-  sorry
-
-lemma lookup_ref452 [sl]:"ht (EXS x. (v \<mapsto> (\<lambda>_. a), (\<lambda>_. x)) * R (\<lambda>_. x)) (lookup k_upd (\<lambda>s. v s + 1)) ((v \<mapsto> b, kei) * R kei)"
-sorry
-
-lemma mutation_ref452 [sl]: "ht (v \<mapsto> a, b) (mutation (\<lambda>s. v s + 1) e) (v \<mapsto> a, e)"
-  sorry
 
 lemma "ht (llist xs i)(
       assign j_update $0;

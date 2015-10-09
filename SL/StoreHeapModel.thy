@@ -263,6 +263,12 @@ apply assumption
 apply (rule sl_lookup_alt2)
 done
 
+lemma lookup_ref452 [sl]:"ht (EXS x. (v \<mapsto> (\<lambda>_. a), (\<lambda>_. x)) * R (\<lambda>_. x)) (lookup k_upd (\<lambda>s. v s + 1)) ((v \<mapsto> b, kei) * R kei)"
+sorry
+
+lemma mutation_ref452 [sl]: "ht (v \<mapsto> a, b) (mutation (\<lambda>s. v s + 1) e) (v \<mapsto> a, e)"
+  sorry
+
 named_theorems hl_rules
 
 method hoare_init uses simp = 
