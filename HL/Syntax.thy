@@ -1,10 +1,11 @@
 section {* Syntax for the while-language *}
 
 theory Syntax
-  imports VCG Array Refinement
+  imports VCG Array Lists Refinement
 begin
 
 no_notation comp_op ("n_" [90] 91)
+  and comp_op ("!_" [101] 100)
   and test_operator  ("t_" [100] 101)
   and floor ("\<lfloor>_\<rfloor>")
   and ceiling ("\<lceil>_\<rceil>")
@@ -65,6 +66,9 @@ syntax
 
   "_Spec"       :: "bool \<Rightarrow> bool \<Rightarrow> 'a"                       ("\<lbrakk>_,_\<rbrakk>" [10, 10] 100)
 
+(* Lists assignement *)
+syntax "_ListUpdate" :: "idt list \<Rightarrow> nat \<Rightarrow> 'b \<Rightarrow> 'a rel" ("`_ ! _ := _" [70, 70, 70] 62)
+
 ML {*
 
   fun antiquote_tr name =
@@ -118,6 +122,7 @@ translations
 
   "\<lbrakk>p, q\<rbrakk>"                   == "CONST Spec (CONST Collect \<guillemotleft>p\<guillemotright>) (CONST Collect \<guillemotleft>q\<guillemotright>)" 
 
+  "`A ! k := a" => "`A := CONST list_update `A k a" 
 
 syntax ("" output)
   "_assert"    :: "'s \<Rightarrow> 's set"                             ("[_]" [0] 1000)

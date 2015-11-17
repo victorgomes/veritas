@@ -18,11 +18,6 @@ text {* \emph{hoare} tactic *}
 
 named_theorems hl_rules
 
-(*
-method hoare_init uses simp = 
-  ((rule allI | rule ballI | subst simp | subst fst_conv | subst snd_conv)+)?
-*)
-
 method hoare_init uses simp = 
   ((subst simp | subst fst_conv | subst snd_conv)+)?
 
