@@ -5,54 +5,32 @@ begin
 definition rel_spec :: "'a rel \<Rightarrow> 'a rel \<Rightarrow> 'a rel"  where
   "rel_spec P Q \<equiv> Sup {X. P O X \<subseteq> X O Q}"
 
-lemma rel_specD: "near_dioid_tests_zerol.test (\<lambda>x. Id \<inter> - x) P \<Longrightarrow> 
-   near_dioid_tests_zerol.test (\<lambda>x. Id \<inter> - x) Q \<Longrightarrow>
-   X \<le> rel_spec P Q \<Longrightarrow> P O X \<subseteq> X O Q"
-(*
-  apply (subst rel_kat.hoare_triple_def_var)
-  apply auto
-  apply (subgoal_tac "xa = y")
-  prefer 2
-  apply (metis rel_kat.test_absorb3 rel_kat.test_comp_add rel_kat.test_def rel_kat.test_restrictr pair_in_Id_conv subsetCE)
-  apply simp
-  apply (subgoal_tac "(y, z) \<in> rel_spec p q")
-  prefer 2
-  apply (metis subsetCE)
-  apply (rule relcompI)
-  apply assumption
-  apply (auto simp: rel_spec_def)
-  apply (subst (asm) rel_kat.hoare_triple_def_var) back
-  apply auto
-  apply (subgoal_tac "(y, z) \<in> p O xa")
-  prefer 2
-  apply force
-  apply (subgoal_tac "(y, z) \<in> xa O q")
-  prefer 2
-  apply force
-  apply (erule relcompE) back
-  by (metis Id_O_R rel_kat.test_restrictr pair_in_Id_conv prod.inject subsetCE)
-*)
-sorry
-
 abbreviation rel_not :: "'a rel \<Rightarrow> 'a rel" where
   "rel_not x \<equiv> Id \<inter> ( - x)"
 
-interpretation rel_rkat: rkat "op \<union>" "op O" "Id :: 'a rel" "{}" "op \<subseteq>" "op \<subset>" rtrancl rel_not rel_spec
-  apply (default, safe) 
-  apply (clarsimp simp: rel_spec_def)
-  apply (rule_tac x=x in exI)
-  apply force
-  apply (auto simp: rel_dioid_tests.test_def rel_spec_def)
-  apply (subgoal_tac "xa = y")
-  prefer 2
-  apply blast
-  apply simp
-  apply (subgoal_tac "(y, z) \<in> \<Union>{X. p O X \<subseteq> X O q}")
-  prefer 2
-  apply blast
-  apply (subgoal_tac "\<exists>X. (y, z) \<in> X \<and> p O X \<subseteq> X O q")
-apply clarsimp
+lemma rel_spec1: "near_dioid_tests_zerol.test rel_not P \<Longrightarrow> 
+   near_dioid_tests_zerol.test rel_not Q \<Longrightarrow>
+   P O X \<subseteq> X O Q \<Longrightarrow> X \<le> rel_spec P Q"
+   by (auto simp: rel_spec_def)
 
-sorry
+lemma rel_spec2: "near_dioid_tests_zerol.test rel_not P \<Longrightarrow> 
+   near_dioid_tests_zerol.test rel_not Q \<Longrightarrow>
+   X \<le> rel_spec P Q \<Longrightarrow> P O X \<subseteq> X O Q"
+proof (simp add: rel_spec_def rel_dioid_tests.kat_eq2[symmetric])
+  assume "X \<subseteq> \<Union>{X. (P O X) O (rel_not Q) = {}}"
+  hence "(P O X) O (rel_not Q) \<subseteq> (P O \<Union>{X. (P O X) O (rel_not Q) = {}}) O (rel_not Q)"
+    by (simp add: relcomp_mono)
+  also have "... \<subseteq> \<Union>{(P O X)O (Id \<inter> - Q) | X. (P O X) O (rel_not Q) = {}} "
+    by auto
+  also have "... \<subseteq> {}"
+    by auto
+  finally show "(P O X) O (rel_not Q) = {}"
+    by auto
+qed
+
+interpretation rel_rkat: rkat "op \<union>" "op O" "Id :: 'a rel" "{}" "op \<subseteq>" "op \<subset>" rtrancl rel_not rel_spec
+  apply (default, default)
+  apply (simp_all add: rel_spec1 rel_spec2)
+done
 
 end
