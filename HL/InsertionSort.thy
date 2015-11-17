@@ -90,6 +90,7 @@ proof -
     apply auto
     apply (auto simp: sorted_but_def array_sorted_off_var)
     
+    
 
     
 apply (metis Suc_leI dual_order.antisym eq_refl order.trans

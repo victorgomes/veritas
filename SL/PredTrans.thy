@@ -18,7 +18,7 @@ definition skip :: "'a ptran" where
 definition assumption :: "'a pred \<Rightarrow> 'a ptran" ("\<lfloor>_\<rfloor>" [50] 100) where
   "\<lfloor>p\<rfloor> \<equiv> \<lambda>q. -p \<squnion> q"
 
-definition seq :: "'a ptran \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" (infixl ";" 65) where
+definition seq :: "'a ptran \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" (infixl ";" 60) where
   "seq \<equiv> op o"
 
 definition cond :: "'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" where
@@ -51,11 +51,11 @@ lemma iso_iter: "mono F \<Longrightarrow> F \<le> G \<Longrightarrow> F\<^sup>\<
   apply (auto intro: iso_pow)
 done
 
-definition while :: "'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" where
-  "while b F \<equiv> (\<lfloor>b\<rfloor> o F)\<^sup>\<omega> o \<lfloor>-b\<rfloor>"
+definition cwhile :: "'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" where
+  "cwhile b F \<equiv> (\<lfloor>b\<rfloor> o F)\<^sup>\<omega> o \<lfloor>-b\<rfloor>"
 
-lemma iso_while: "mono F \<Longrightarrow> F \<le> G \<Longrightarrow> while b F \<le> while b G"
-proof (auto simp: while_def)
+lemma iso_while: "mono F \<Longrightarrow> F \<le> G \<Longrightarrow> cwhile b F \<le> cwhile b G"
+proof (auto simp: cwhile_def)
   assume a: "F \<le> G" and "mono F"
   hence "mono (\<lfloor>b\<rfloor> \<circ> F)"
     by (auto simp: mono_def assumption_def)
@@ -70,7 +70,7 @@ qed
 text {* Annotated programs for automatic verification *}
 
 definition awhile :: "'a pred \<Rightarrow> 'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" where
-  "awhile i b x \<equiv> while b x"
+  "awhile i b x \<equiv> cwhile b x"
 
 definition apre :: "'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a ptran" where
   "apre p x \<equiv> x"
@@ -81,8 +81,10 @@ definition apost :: "'a ptran \<Rightarrow> 'a pred\<Rightarrow> 'a ptran" where
 definition aprog :: "'a pred \<Rightarrow> 'a ptran \<Rightarrow> 'a pred \<Rightarrow> 'a ptran" where
   "aprog p x q \<equiv> x"
 
-
 (* Algebraic Structure *)
+
+lemma seq_assoc: "(x; y); z = x; (y; z)"
+  by (auto simp: seq_def)
 
 interpretation PT!: near_quantale_unital id "op o" Inf Sup inf less_eq less sup bot "top :: 'a ptran"
   by default auto
@@ -158,8 +160,8 @@ qed
 lemma cc_iter [ccptran]: "cocontinuity F \<Longrightarrow> cocontinuity (F\<^sup>\<omega>)"
   by (auto simp: iteration_def intro!: ccptran)
 
-lemma cc_while [ccptran]: "cocontinuity F \<Longrightarrow> cocontinuity (while b F)"
-  by (auto simp: while_def intro: ccptran)
+lemma cc_while [ccptran]: "cocontinuity F \<Longrightarrow> cocontinuity (cwhile b F)"
+  by (auto simp: cwhile_def intro: ccptran)
 
 lemma cc_awhile [ccptran]: "cocontinuity F \<Longrightarrow> cocontinuity (awhile i b F)"
   by (auto simp: awhile_def intro: ccptran)
@@ -210,8 +212,8 @@ lemma mono_Inf [mptran]: "\<forall>(f :: 'a :: complete_lattice \<Rightarrow> 'a
 lemma mono_iter [mptran]: "mono F \<Longrightarrow> mono (F\<^sup>\<omega>)"
   by (auto simp: iteration_def intro!: mptran)
 
-lemma mono_while [mptran]: "mono F \<Longrightarrow> mono (while b F)"
-  by (auto simp: while_def intro: mptran)
+lemma mono_while [mptran]: "mono F \<Longrightarrow> mono (cwhile b F)"
+  by (auto simp: cwhile_def intro: mptran)
 
 lemma mono_awhile [mptran]: "mono F \<Longrightarrow> mono (awhile i b F)"
   by (auto simp: awhile_def intro: mptran)
@@ -288,8 +290,8 @@ by (metis (no_types) INF_lower2 bbi.Sup.qisol order_refl sep_comm subsetCE)
 lemma local_iter [lptran]: "mono F \<Longrightarrow> local F r \<Longrightarrow> local (F\<^sup>\<omega>) r"
   by (auto simp: iteration_def intro: lptran)
 
-lemma local_while [lptran]: "local_pred b \<Longrightarrow> local_pred (-b) \<Longrightarrow> mono F \<Longrightarrow> local F r \<Longrightarrow> local (while b F) r"
-  by (auto simp: while_def intro!: lptran mptran)
+lemma local_while [lptran]: "local_pred b \<Longrightarrow> local_pred (-b) \<Longrightarrow> mono F \<Longrightarrow> local F r \<Longrightarrow> local (cwhile b F) r"
+  by (auto simp: cwhile_def intro!: lptran mptran)
 
 lemma local_awhile [lptran]: "mono F \<Longrightarrow> local_pred b \<Longrightarrow> local_pred (-b) \<Longrightarrow> local F r \<Longrightarrow> local (awhile i b F) r"
   by (auto simp: awhile_def intro!: lptran mptran)
@@ -357,15 +359,15 @@ lemma hl_iter [sl]: "mono F \<Longrightarrow> ht p F p \<Longrightarrow> ht p F\
   apply auto
   using hl_pow by blast
 
-lemma hl_while [sl]: "mono F \<Longrightarrow> ht (b \<sqinter> i) F i \<Longrightarrow> ht i (while b F) (-b \<sqinter> i)"
-  apply (auto simp: while_def intro!: sl mptran)
+lemma hl_while [sl]: "mono F \<Longrightarrow> ht (b \<sqinter> i) F i \<Longrightarrow> ht i (cwhile b F) (-b \<sqinter> i)"
+  apply (auto simp: cwhile_def intro!: sl mptran)
   by (auto simp: ht_def assumption_def)
 
-lemma sl_frame [sl]: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht (p * r) F (q * r)"
+lemma sl_frame: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht (p * r) F (q * r)"
   apply (auto simp: local_def ht_def)
   by (meson Assertions.bbi.sep_implE1 Assertions.bbi.sep_implI1 contra_subsetD dual_order.trans)
 
-lemma sl_frame2 [sl]: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht (r * p) F (r * q)"
+lemma sl_frame2: "local F r \<Longrightarrow> ht p F q \<Longrightarrow> ht (r * p) F (r * q)"
   by (simp add: sep_comm sl_frame)
 
 text {* Weakening / Strengthening / Consequence Rules *}

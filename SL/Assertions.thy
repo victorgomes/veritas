@@ -120,7 +120,7 @@ type_synonym ('v, 's) rval = "'s \<Rightarrow> 'v"
 text {* A variable is then a pair of left and right values, satisfying some properties. *}
 type_synonym ('v, 's) var = "('v, 's) lval \<times> ('v, 's) rval"
 
-abbreviation subst :: "('s \<Rightarrow> 'v) \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's \<Rightarrow> 'v" where
+abbreviation (input) subst :: "('s \<Rightarrow> 'v) \<Rightarrow> ('v, 's) lval \<Rightarrow> ('v, 's) rval \<Rightarrow> 's \<Rightarrow> 'v" where
   "subst e u_upd v \<equiv> \<lambda>s. e (u_upd (\<lambda>_. v s) s)"
 
 abbreviation free :: "('v, 's) lval \<Rightarrow> ('s \<Rightarrow> 'v) \<Rightarrow> bool" where
@@ -149,6 +149,9 @@ section {* Substitution Lemmas *}
 (*****************************************************************************************)
 
 named_theorems spred
+
+lemma subst_true [spred]: "subst_pred true j_update i = true"
+  by (auto simp: subst_pred_def)
 
 lemma subst_inf [spred]: "subst_pred (P \<sqinter> Q) i_update j = (subst_pred P i_update j) \<sqinter> (subst_pred Q i_update j)"
   by (auto simp: subst_pred_def)
@@ -298,6 +301,12 @@ lemma [sep_simp, simp]: "s \<in> (if P then UNIV else {}) = P"
 
 (* some intro and elim lemmas *)
 
+lemma infI: "(s, h) \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> (s, h) \<in> P \<sqinter> Q"
+  by auto
+
+lemma infE: "(s, h) \<in> P \<sqinter> Q \<Longrightarrow> ((s, h) \<in> P \<Longrightarrow> (s, h) \<in> Q \<Longrightarrow> G) \<Longrightarrow> G"
+  by auto
+
 lemma pred_exI: "(s, h) \<in> P x \<Longrightarrow> (s, h) \<in> (EXS x. P x)"
   by auto
 
@@ -318,8 +327,12 @@ lemma heap_reductl: "(s, h) \<in> p \<Longrightarrow> (q = emp) \<Longrightarrow
 lemma heap_reductr: "(s, h) \<in> q \<Longrightarrow> (p = emp) \<Longrightarrow> (s, h) \<in> p * q"
   by (auto simp: sep_def emp_def)
 
-lemma heap_reduct2: "(s, h) \<in> p * q \<Longrightarrow> (\<And>h. (s, h) \<in> q \<Longrightarrow> (s, h) \<in> q') \<Longrightarrow> (s, h) \<in> p * q'"
-  by (auto simp: sep_def)
+lemma heap_reduct2: "(s, h) \<in> p * q \<Longrightarrow> (\<And>h'. dom h' \<subseteq> dom h \<Longrightarrow> (s, h') \<in> q \<Longrightarrow> (s, h') \<in> q') \<Longrightarrow> (s, h) \<in> p * q'"
+  apply (auto simp: sep_def)
+  apply (rule_tac x=h1 in exI)
+  apply (rule_tac x=h2 in exI)
+  apply auto
+done 
 
 lemma pure_allE: "(\<And>x. P x \<Longrightarrow> Q x) \<Longrightarrow> P y \<Longrightarrow> Q y"
   by auto

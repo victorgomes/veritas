@@ -103,19 +103,6 @@ lemma power': "\<turnstile> \<lbrace> True \<rbrace>
     \<lbrace> `b = a ^ `n \<rbrace>"
     by hoare auto
 
-
-ML {*
-  @{term "{s. b s = a}"}
-*}
-ML {*
-  @{term "\<turnstile> \<lbrace> `b = a ^ `n  \<rbrace> 
-    `b := 1;
-    for `i := 0 to `n do
-      `b := `b * a
-    od  
-    \<lbrace> `b = a ^ `n \<rbrace>"}
-*}
-
 hide_const i b n
 
 record ls_state =
@@ -169,39 +156,6 @@ lemma linear_search'':
   using less_SucE by blast
 
 hide_const i j n
-
-(*
-record 'a :: order bubble =
-  i :: nat
-  j :: nat
-  k :: nat
-  a :: "'a array"
-
-lemma bubble: 
-  "\<turnstile> \<lbrace> True \<rbrace>
-    `i := n;
-    while `i > 0
-    inv array_sorted (`a) (`i + 1) (n - `i) \<and> `i \<le> n
-    do
-      `j := 1;
-      while `j < `i
-      inv (\<forall>k. 1 \<le> k \<and> k \<le> `j \<longrightarrow> `a(k) \<le> `a(`j)) \<and> `i \<le> n \<and> `i > 0
-        \<and> array_sorted (`a) (`i + 1) (n - `i)  \<and>
-      (\<forall>k. 1 \<le> k \<and> k \<le> `i \<longrightarrow> `a k \<le> `a (`i + 1))
-      do
-        if `a(`j) > `a(`j + 1) then
-          `k := `a(`j);
-          `a(`j) := `a(`j + 1);
-          `a(`j + 1) := `k
-        fi;
-        `j := `j + 1
-      od;
-      `i := `i - 1
-    od
-  \<lbrace> array_sorted (`a) 1 n \<rbrace>"
-  apply hoare
-oops
-*)
 primrec fact :: "nat \<Rightarrow> nat" where
   "fact 0 = 1"
 | "fact (Suc n) = (Suc n) * fact n"
@@ -311,80 +265,4 @@ lemma extended_euclid: "\<turnstile> \<lbrace> True \<rbrace>
 
 hide_const a b a' b' c d r q t
 
-(*
-type_synonym 'a array = "(nat \<Rightarrow> 'a) \<times> nat"
-
-abbreviation array :: "'a array \<Rightarrow> nat \<Rightarrow> 'a" where "array \<equiv> fst"
-abbreviation len :: "'a array \<Rightarrow> nat" where "len \<equiv> snd"
-
-fun sum_to :: "nat array \<Rightarrow> nat \<Rightarrow> nat" where
-  "sum_to (f, _) 0 = undefined"
-| "sum_to (f, n) (Suc 0) = (if n > 0 then f 0 else undefined)"
-| "sum_to (f, n) (Suc m) = (if n > m then f m + sum_to (f, n) m else undefined)"
-
-record state_sum =
-  s :: nat
-  i :: nat
-
-lemma "\<turnstile> \<lbrace> len a > 0 \<rbrace> 
-    `s := array a 0;
-    for `i := 0 to len a
-    inv `s = sum_to a `i \<and> `i \<le> len a
-    do
-      `s := `s + (array a `i)
-    od  
-    \<lbrace> `s = sum_to a (len a) \<rbrace>"
-apply hoare
-apply auto
-apply (case_tac a)
-apply auto
-apply (case_tac "b > i x")
-apply auto
-prefer 3
-apply (case_tac a)
-apply force
-apply (case_tac a)
-apply auto
-apply (case_tac a)
-apply auto
-apply force
-
-
-apply clarsimp
-apply (subst card_UN_disjoint[symmetric])
-apply (rule antisym)
-prefer 3
-apply (case_tac a)
-apply auto
-apply (case_tac a)
-apply auto
-
-
-apply simp
-apply force
-apply force
-apply simp
-apply (subst Collect_neg_eq[symmetric])
-apply (subst linorder_not_le)
-apply simp
-apply auto
-apply hoare_step
-apply hoare_step
-defer
-defer
-apply hoare_step
-apply hoare_step
-defer
-apply hoare_step
-apply hoare_step
-apply hoare_step
-prefer 2
-apply force
-apply simp
-apply hoare
-apply simp
-apply force
-apply clarsimp
-apply auto
-*)
 end

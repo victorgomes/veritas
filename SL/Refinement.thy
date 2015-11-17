@@ -34,7 +34,7 @@ lemma spec_mono [mptran]: "mono (spec p q)"
 
 (***********************************************************************************************)
 
-text {* Remaining Refinement Laws for Separation Logic *}
+text {* Morgan's refinement laws *}
 
 named_theorems rlaw
 
@@ -64,24 +64,6 @@ lemma skip_ref_var2 [rlaw]: "p \<le> q \<Longrightarrow> spec p q \<le> skip"
 
 lemma sequence_ref [rlaw]: "spec p q \<le> (spec p r); (spec r q)"
   using hl_seq mono_seq specI spec_ht spec_mono by blast
-
-lemma choice_ref [rlaw]: "spec p q \<le> x \<Longrightarrow> spec p q \<le> y \<Longrightarrow> spec p q \<le> x \<sqinter> y"
-  by simp
-
-lemma test_expl_ref [rlaw]: "spec p q \<le>  \<lfloor>b\<rfloor>; (spec (p \<sqinter> b) q)"
-  by (metis hl_asumption ht_def inf_commute mono_assumption mono_seq seq_def specI spec_char spec_mono)
-
-lemma test_expr_ref [rlaw]: "spec p (q \<sqinter> b) \<le> (spec p q); \<lfloor>b\<rfloor>"
-  by (metis Assertions.bbi.join_meet_galois Sup.order_refl assumption_def hl_seq ht_def inf_commute mono_assumption mono_seq specI spec_char spec_mono)
-
-lemma conditional_ref [rlaw]: "spec p q \<le> cond b (spec (p \<sqinter> b) q) (spec (p \<sqinter> -b) q)"
-  by (metis hl_cond ht_def inf_commute mono_cond specI spec_char spec_mono)
-
-lemma while_ref [rlaw]: "spec p (p \<sqinter> -b) \<le> while b (spec (p \<sqinter> b) p)"
-  by (metis hl_while ht_def inf_commute mono_while specI spec_char spec_mono)
-
-lemma assignment_ref [rlaw]: "p \<subseteq> subst_pred q v m \<Longrightarrow> spec p q \<le> assign v m"
-  by (auto simp: subst_pred_def assign_def spec_def basic_def valid_mem_def intro!: Inf_lower mptran)
 
 lemma following_ref: "mono y \<Longrightarrow> x \<le> y ; z \<Longrightarrow> z \<le> w \<Longrightarrow> x \<le> y ; w"
 proof -
@@ -115,48 +97,55 @@ lemma leading_ref' [rlaw]: "spec p r \<le> F \<Longrightarrow> spec p q \<le> F;
   apply (rule sequence_ref)
 done
 
-lemma following_assignment_ref [rlaw]: "q' \<subseteq> subst_pred q v m \<Longrightarrow> spec p q \<le> spec p q'; assign v m"
-  by (auto intro: following_ref mptran rlaw)
+lemma mono_law [rlaw]: "mono x \<Longrightarrow> y \<le> z \<Longrightarrow> x ; y \<le> x ; z"
+  apply (auto simp: seq_def)
+  by (metis following_ref order_refl seq_def)
 
-lemma leading_assignment_ref [rlaw]: "p \<subseteq> subst_pred p' v m \<Longrightarrow> spec p q \<le> assign v m; spec p' q"
-  by (auto intro: leading_ref rlaw)
+lemma choice_ref [rlaw]: "spec p q \<le> x \<Longrightarrow> spec p q \<le> y \<Longrightarrow> spec p q \<le> x \<sqinter> y"
+  by simp
 
+lemma test_expl_ref [rlaw]: "spec p q \<le>  \<lfloor>b\<rfloor>; (spec (p \<sqinter> b) q)"
+  by (metis hl_asumption ht_def inf_commute mono_assumption mono_seq seq_def specI spec_char spec_mono)
 
-lemma iso_while_spec [mptran]: "mono (\<lambda>p. while b (spec p i))"
+lemma test_expr_ref [rlaw]: "spec p (q \<sqinter> b) \<le> (spec p q); \<lfloor>b\<rfloor>"
+  by (metis Assertions.bbi.join_meet_galois Sup.order_refl assumption_def hl_seq ht_def inf_commute mono_assumption mono_seq specI spec_char spec_mono)
+
+lemma conditional_ref [rlaw]: "spec p q \<le> cond b (spec (p \<sqinter> b) q) (spec (p \<sqinter> -b) q)"
+  by (metis hl_cond ht_def inf_commute mono_cond specI spec_char spec_mono)
+
+lemma while_ref [rlaw]: "spec p (p \<sqinter> -b) \<le> cwhile b (spec (p \<sqinter> b) p)"
+  by (metis hl_while ht_def inf_commute mono_while specI spec_char spec_mono)
+
+lemma iso_while_spec: "mono (\<lambda>p. cwhile b (spec p i))"
 proof (auto simp: mono_def)
   fix x y :: "'a pred" assume "x \<le> y"
   moreover have "mono (spec x i)"
     by (simp add: spec_mono)
   moreover have "(spec x i) \<le> (spec y i)"
-    by (simp add: calculation(1) weaken_pre)
-  ultimately show "while b (spec x i) \<le> while b (spec y i)"
+    by (meson calculation(1) hl_pre specI spec_ht spec_mono)
+  ultimately show "cwhile b (spec x i) \<le> cwhile b (spec y i)"
     by (auto intro!: iso_while)
 qed
 
-lemma while_ref_tactic [rlaw]: "\<lbrakk>i \<sqinter> b \<le> p'; p \<le> i; i - b \<le> q\<rbrakk> \<Longrightarrow> spec p q \<le> while b (spec p' i)"
+lemma while_ref_tactic [rlaw]: "\<lbrakk>i \<sqinter> b \<le> p'; p \<le> i; i - b \<le> q\<rbrakk> \<Longrightarrow> spec p q \<le> cwhile b (spec p' i)"
 proof -
   assume "p \<le> i" "i - b \<le> q" and assm: "i \<sqinter> b \<le> p'"
   hence "spec p q \<le> spec i (i \<sqinter> -b)"
     by (metis diff_eq weaken_and_strengthen)
-  also have "... \<le> while b (spec (i \<sqinter> b) i)"
+  also have "... \<le> cwhile b (spec (i \<sqinter> b) i)"
     by (simp add: while_ref)
-  also have "... \<le> while b (spec p' i)"
-    using assm by (auto intro!: monoD mptran)
+  also have "... \<le> cwhile b (spec p' i)"
+    using assm by (auto intro!: monoD iso_while_spec)
   finally show ?thesis
     by simp
 qed
 
+lemma exs_ref [rlaw]: "mono R \<Longrightarrow> (\<And>x. spec (P x) (Q x) \<le> R) \<Longrightarrow> spec (EXS x. P x) (EXS y. Q y) \<le> R"
+  by (auto simp: ht_spec_eq[symmetric] intro: hl_exs2)
 
-lemma [rlaw]: "mono R \<Longrightarrow> (\<And>x. spec (P x) (Q x) \<le> R) \<Longrightarrow> spec (EXS x. P x) (EXS y. Q y) \<le> R"
-  apply (subst ht_spec_eq[symmetric])
-  apply simp
-  apply (rule hl_exs2)
-  apply simp
-by (simp add: ht_spec_eq)
- 
-lemma dispose_ref [rlaw]: "spec ((e \<mapsto> n) * r) r \<le> dispose e"
-  by (simp add: mono_dispose sl_dispose_alt specI)
+(***********************************************************************************************)
 
+text {* Framing laws *}
 
 lemma frame_ref [rlaw]: "mono x \<Longrightarrow> local x r \<Longrightarrow> spec p q \<le> x \<Longrightarrow> spec (p * r) (q * r) \<le> x"
   using ht_spec_eq sl_frame by blast
@@ -164,65 +153,68 @@ lemma frame_ref [rlaw]: "mono x \<Longrightarrow> local x r \<Longrightarrow> sp
 lemma frame_ref2 [rlaw]: "mono x \<Longrightarrow> local x r \<Longrightarrow> spec p q \<le> x \<Longrightarrow> spec (r * p) (r * q) \<le> x"
   by (simp add: frame_ref sep_comm)
 
+(***********************************************************************************************)
+
+text {* Assignment and mutation laws *}
+
+lemma assignment_ref [rlaw]: "p \<subseteq> subst_pred q v m \<Longrightarrow> spec p q \<le> assign v m"
+  by (auto simp: subst_pred_def assign_def spec_def basic_def valid_mem_def intro!: Inf_lower mptran)
+
+lemma following_assignment_ref [rlaw]: "q' \<subseteq> subst_pred q v m \<Longrightarrow> spec p q \<le> spec p q'; assign v m"
+  by (auto intro: following_ref mptran rlaw)
+
+lemma leading_assignment_ref [rlaw]: "p \<subseteq> subst_pred p' v m \<Longrightarrow> spec p q \<le> assign v m; spec p' q"
+  by (auto intro: leading_ref rlaw)
+
+lemma lookup_ref [rlaw]: "\<forall>s x. k (k_update (\<lambda>_. x) s) = x \<Longrightarrow> 
+            \<forall>s x. i (k_update (\<lambda>_. x) s) = i s \<Longrightarrow> 
+            \<forall>x. subst_pred (R k) k_update (\<lambda>_. x) = R (\<lambda>_. x) \<Longrightarrow> 
+            spec (EXS x. (i \<mapsto> (\<lambda>_. x)) * R (\<lambda>_. x)) ((i \<mapsto> k) * R k) \<le> lookup k_update i"
+   apply (rule specI)
+   apply (rule mptran)+
+   apply (rule hl_pre[rotated])
+   apply (rule sl_lookup_alt')
+   apply (rule mono_exs)
+   apply sep_simp
+   apply simp
+   apply (metis (no_types, lifting) bbi.Sup.qisol bbi.mult.left_commute top_greatest)
+done
+
+lemma lookup_suc_ref [rlaw]: "\<forall>s x. k (k_update (\<lambda>_. x) s) = x \<Longrightarrow> 
+            \<forall>s x. i (k_update (\<lambda>_. x) s) = i s \<Longrightarrow> 
+            \<forall>x. subst_pred (R k) k_update (\<lambda>_. x) = R (\<lambda>_. x) \<Longrightarrow> 
+            spec (EXS x. (i \<mapsto> (\<lambda>_. a), (\<lambda>_. x)) * R (\<lambda>_. x)) ((i \<mapsto> (\<lambda>_. a), k) * R k) \<le> lookup k_update (\<lambda>s. i s + 1)"
+   apply (rule specI)
+   apply (rule mptran)+
+   apply (rule hl_pre[rotated])
+   apply (rule sl_lookup_alt')
+   apply (rule mono_exs)
+   apply sep_simp
+   apply simp
+   apply (metis (no_types, lifting) bbi.Sup.qisol bbi.mult.left_commute top_greatest)
+done
+
+lemma alloc_ref [rlaw]: "free x_upd e \<Longrightarrow> vars1 x_upd x \<Longrightarrow> spec emp (x \<mapsto> e) \<le> alloc x_upd e"
+  by (auto intro: specI mptran sl)
+
+lemma disposal_ref [rlaw]: "spec ((e \<mapsto> n) * r) r \<le> disposal e"
+  by (simp add: mono_disposal sl_disposal_alt specI)
+
 lemma mutation_ref [rlaw]: "spec ((e \<mapsto> n) * r) ((e \<mapsto> e') * r) \<le> mutation e e'"
-  apply (rule frame_ref)
-  apply (rule mptran | rule lptran)+
-  apply (subst ht_spec_eq[symmetric])
-  apply (rule mptran)
-  apply (rule sl_mut_local')
-done
+  by (auto intro: specI mptran sl)
 
-lemma mutation_ref2 [rlaw]: "spec ((i \<mapsto> a, b) * r) ((i \<mapsto> a, e) * r) \<le> mutation (\<lambda>s. i s + 1) e"
-  apply (rule frame_ref)
-  apply (rule mptran | rule lptran)+
-  apply (simp add: doublet_def)
-  apply (rule frame_ref2)
-  apply (rule mptran | rule lptran)+
-  apply (subst ht_spec_eq[symmetric])
-  apply (rule mptran)
-  apply (rule sl_mut_local')
-done
-
-lemma seq_assoc: "(x ; y); z = x; (y; z)"
-  by (auto simp: seq_def)
-
-lemma [rlaw]: "mono x \<Longrightarrow> y \<le> z \<Longrightarrow> x ; y \<le> x ; z"
-  apply (auto simp: seq_def)
-by (metis following_ref order_refl seq_def)
-
-declare iso_while [rlaw]
-
-(*
-lemma [rlaw]: "x \<le> y \<Longrightarrow> while b x \<le> while b y"
-  apply (auto simp: while_def)
-*)
-lemma lookup_ref [rlaw]: "\<forall>s x. k (k_update (\<lambda>_. x) s) = x \<Longrightarrow> \<forall>s x. i (k_update (\<lambda>_. x) s) = i s \<Longrightarrow> \<forall>x. subst_pred (R k) k_update (\<lambda>_. x) = R (\<lambda>_. x) \<Longrightarrow> 
-            spec (EXS x. (i \<mapsto> (\<lambda>_. a), (\<lambda>_. x)) * R (\<lambda>_. x))
-                ((i \<mapsto> (\<lambda>_. a), k) * R k)
-               \<le> lookup k_update (\<lambda>s. i s + 1)"
-               apply (rule specI)
-               apply (rule mptran)+
-               apply (rule hl_pre[rotated])
-               apply (rule sl_lookup2)
-               apply (rule mono_exs)
-               apply sep_simp
-               apply simp
-               apply (rule reynolds6_var)
-               apply (metis (no_types, lifting) bbi.Sup.qisol bbi.mult.left_commute top_greatest)
-               apply simp
-done
-
+lemma mutation_suc_ref [rlaw]: "spec ((i \<mapsto> a, b) * r) ((i \<mapsto> a, e) * r) \<le> mutation (\<lambda>s. i s + 1) e"
+  by (auto simp: doublet_def sep_assoc intro: frame_ref2 mptran lptran specI sl)
 
 (***********************************************************************************************)
 
 text {* \emph{morgan} tactic *}
 
 method morgan_step uses simp ref = 
-  (assumption | subst sep_assoc | subst seq_assoc | rule ref rlaw mptran)
+  (assumption | subst sep_assoc | subst seq_assoc | rule iso_while | rule ref rlaw mptran)
 
 method morgan uses simp ref = 
   (morgan_step simp: simp ref: ref; (morgan simp: simp ref: ref)?)+
-
 
 
 end
