@@ -63,17 +63,8 @@ definition sorted_but :: "('a :: order) array \<Rightarrow> nat \<Rightarrow> na
 lemma [simp]: "sorted_but a n 0 = array_sorted_off a (Suc 0) n"
   by (auto simp: sorted_but_def array_sorted_off_var)
 
-
-
 definition array_sorted :: "'a :: order array \<Rightarrow> bool" where
   "array_sorted a \<equiv> array_sorted_off a 1 (len a)"
-
-
-
-(*
-fun new_array :: "'a list \<Rightarrow> 'a array" where
-  "new_array xs = nth xs"
-*)
 
 lemma "array_sorted_off a i n \<Longrightarrow> array_sorted_off a (Suc i) (n - 1)"
   apply (induct n)
@@ -82,10 +73,6 @@ lemma "array_sorted_off a i n \<Longrightarrow> array_sorted_off a (Suc i) (n - 
   apply auto
   apply (case_tac nat)
 by auto
-(*
-lemma last_num: "n > 0 \<Longrightarrow> array_sorted a i (Suc n) \<Longrightarrow> a (i + n - Suc 0) \<le> a (i + n)"
-  by (cases n) auto
-*)
 
 definition bij_prop :: "(nat \<Rightarrow> nat) \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where
   "bij_prop f x y \<equiv> bij f \<and> (\<forall>i. i \<notin> \<lbrace>x, y\<rbrace> \<longrightarrow> f i = i)"
@@ -105,26 +92,10 @@ definition perm_betw :: "'a array \<Rightarrow> 'a array \<Rightarrow> nat \<Rig
 
 definition perm :: "'a array \<Rightarrow> 'a array \<Rightarrow> bool" ("_ <~~> _"  [50, 50] 50)  where
   "perm a b \<equiv> len a = len b \<and> perm_betw a b 1 (len a)"
- 
-(*
-
-
-(* Some theorems about permutation were copied from HOL/HOL-NSA-Examples/Permutation *)
-inductive perm :: "'a array \<Rightarrow> 'a array \<Rightarrow> bool"  ("_ <~~> _"  [50, 50] 50) 
-where
-  Nil [intro!]: "(a, 0) <~~> (b, 0)"
-| swap [intro!]: "y # x # l <~~> x # y # l"
-| swap [intro!]: "y # x # l <~~> x # y # l"
-| Cons [intro!]: "xs <~~> ys ==> z # xs <~~> z # ys"
-| trans [intro]: "xs <~~> ys ==> ys <~~> zs ==> xs <~~> zs"
-*)
 
 lemma perm_refl [iff]: "l <~~> l"
   by (auto simp: perm_def perm_betw_def)
-(*
-lemma [simp]: "sorted (take (Suc 0) A)"
-  by (induct A) auto
-*)
+
 lemma xperm_empty_imp: "is_empty_array a \<Longrightarrow> a <~~> b \<Longrightarrow> is_empty_array b"
   by (auto simp: is_empty_array_def perm_def)
 
@@ -138,81 +109,11 @@ lemma perm_comm: "a <~~> b \<Longrightarrow> b <~~> a"
   apply (metis bij_is_inj the_inv_f_f)
 done
  
-(*
-lemma perm_append_Cons: "a # xs @ ys <~~> xs @ a # ys"
-  by (induct xs) auto
-*)
-
-(*
-lemma perm_append_swap: "a <@> b <~~> b <@> a"
-
-  apply (induct xs)
-    apply simp_all
-  apply (blast intro: perm_append_Cons)
-  done
-
-lemma perm_append_single: "a # xs <~~> xs @ [a]"
-  by (rule perm.trans [OF _ perm_append_swap]) simp
-*)
 lemma perm_rev: "rev a <~~> a"
   apply (simp add: perm_def perm_betw_def)
   apply (rule_tac x="\<lambda>i. if i > 0 \<and> i \<le> len a then len a - i + 1 else i" in exI)
   apply (auto simp: array_rev_def access_array_def bij_prop_def interval_def)
   apply (auto simp: bij_def inj_on_def image_def)
   by presburger
-
-
-(*
-lemma perm_append1: "xs <~~> ys ==> l @ xs <~~> l @ ys"
-  by (induct l) auto
-
-lemma perm_append2: "xs <~~> ys ==> xs @ l <~~> ys @ l"
-  by (blast intro!: perm_append_swap perm_append1)
-
-lemma perm_swap: "xs @ y # x # ys <~~> xs @ x # y # ys"
-  apply (induct xs)
-  by auto
-*)
-
-
-
-
-
-
-
-(*
-lemma tt: "i > 0 \<Longrightarrow> \<forall>k \<le> i. a(k) \<le> a(i) \<Longrightarrow> array_sorted a i (n - 1) \<Longrightarrow> array_sorted a (i - 1) n"
-apply (induct n)
-apply auto
-apply (case_tac n)
-apply force
-apply simp
-apply (rule conjI)
-apply (case_tac nat)
-apply simp
-apply (rule last_num)
-apply simp
-apply simp
-apply (case_tac nat)
-apply auto
-done
-
-lemma tt2: "i > 0 \<Longrightarrow> \<forall>k. 1 \<le> k \<and> k \<le> i \<longrightarrow> a(k) \<le> a(i + 1) \<Longrightarrow> array_sorted a (Suc i) n \<Longrightarrow> array_sorted a i (Suc n)"
-apply (induct n)
-apply auto
-apply (case_tac n)
-apply force
-apply simp
-apply (case_tac n)
-apply force
-apply simp
-done
-
-lemma "i > 0 \<Longrightarrow> \<forall>k \<le> i. a(k) \<le> a(i) \<Longrightarrow> array_sorted a i (Suc (Suc n)) \<Longrightarrow> array_sorted a  (i - 1) (Suc (Suc (Suc n)))"
-apply (induct n)
-by auto
-
-value "array_sorted (new_array [2, 2, 1 :: nat]) 1 2"
-*)
 
 end

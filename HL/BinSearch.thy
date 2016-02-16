@@ -1,26 +1,20 @@
 theory BinSearch
-  imports Array Syntax
+  imports Syntax
 begin
 
-no_notation Set.image (infixr "`" 90)
-
 hide_const first last sorted 
-
-hide_const last
-
 
 definition sorted :: "'a :: linorder array \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where
   "sorted a i j \<equiv> \<forall>x y. i \<le> x \<and> x \<le> y \<and> y \<le> j \<longrightarrow> a<x> \<le> a<y>"
 
-
-lemma sorted_section1: "sorted a f l \<Longrightarrow> f \<le> m \<Longrightarrow> m < l \<Longrightarrow> a<m> < v \<Longrightarrow> (\<exists>x \<in>\<lbrace>f, l\<rbrace>. a<x> = v) \<longleftrightarrow> (\<exists>x \<in> \<lbrace>Suc m, l\<rbrace>. a<x> = v)"
+lemma sorted_section1: "sorted a f l \<Longrightarrow> f \<le> m \<Longrightarrow> m < l \<Longrightarrow> a<m> < v \<Longrightarrow> (\<exists>x \<in> \<lbrace>Suc m, l\<rbrace>. a<x> = v) \<longleftrightarrow> (\<exists>x \<in>\<lbrace>f, l\<rbrace>. a<x> = v)"
   apply (auto simp: sorted_def interval_def)
-  apply (metis leD less_imp_le_nat not_less_eq_eq)
   apply (rule_tac x=x in exI)
   apply clarsimp
+  apply (metis leD less_imp_le_nat not_less_eq_eq)
 done
 
-lemma sorted_section2: "sorted a f l \<Longrightarrow> f \<le> m \<Longrightarrow> m \<le> l \<Longrightarrow> v \<le> a<m> \<Longrightarrow> (\<exists>x \<in> \<lbrace>f, l\<rbrace>. a<x> = v) \<longleftrightarrow> (\<exists>x \<in> \<lbrace>f, m\<rbrace>. a<x> = v)"
+lemma sorted_section2: "sorted a f l \<Longrightarrow> f \<le> m \<Longrightarrow> m \<le> l \<Longrightarrow> v \<le> a<m> \<Longrightarrow> (\<exists>x \<in> \<lbrace>f, m\<rbrace>. a<x> = v) \<longleftrightarrow> (\<exists>x \<in> \<lbrace>f, l\<rbrace>. a<x> = v)"
   apply (auto simp: sorted_def interval_def)
   by (meson eq_iff nat_le_linear)
 
@@ -58,39 +52,21 @@ lemma "\<forall>u. \<turnstile> \<lbrace> (f u = `first \<and> l u = `last \<and
   \<lbrace> f u \<le> `mid \<and> `mid \<le> l u \<and> (a<`mid> = v \<longleftrightarrow> (\<exists>x \<in> \<lbrace>f u, l u\<rbrace>. a<x> = v)) \<rbrace>"
 apply hoare
 apply force
-
 apply clarsimp
 apply (rule conjI)
 apply force
-apply (subst sorted_section1) back
-apply assumption
-prefer 3
-apply assumption
+apply (rule sorted_section1)
+apply simp+
 apply force
-apply force
-
-apply force
-
-apply force
-
 apply clarsimp
 apply (rule conjI)
-apply force
-apply (subst sorted_section2) back
-apply assumption
-apply assumption
-apply force
-
-defer
-
-defer
-
+apply simp
+apply (rule sorted_section2)
+apply simp+
 apply clarsimp
-
 apply (auto simp: sorted_def interval_def)
 apply (rule_tac x="(first xa + last xa) div 2" in exI)
 apply force
-
-
+done
 
 end
